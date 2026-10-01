@@ -100,6 +100,9 @@ jobs:
           out = "out"
           os.makedirs(out, exist_ok=True)
           host = sys.platform
+          # Named for the platform people read about, not the one Python calls
+          # it: "darwin" in a release filename is nobody's idea of a Mac.
+          label = {"darwin": "macOS", "win32": "Windows"}.get(host, host)
 
           for entry in artifacts:
               kind, path = entry["kind"], entry["path"]
@@ -107,7 +110,7 @@ jobs:
                   shutil.copy2(path, f"{out}/Praccy.AppImage")
                   os.chmod(f"{out}/Praccy.AppImage", 0o755)
               elif kind == "onefile":
-                  name = "Praccy.exe" if host == "win32" else f"Praccy-{host}"
+                  name = "Praccy.exe" if host == "win32" else f"Praccy-{label}"
                   shutil.copy2(path, f"{out}/{name}")
               elif kind == "onedir":
                   # Zip from inside the bundle's own directory, so the archive
@@ -115,7 +118,7 @@ jobs:
                   # unpacks the first and leaves the second in a folder.
                   parent, base = os.path.split(os.path.normpath(path))
                   subprocess.run(["zip", "-qry",
-                                  os.path.abspath(f"{out}/Praccy-{host}.zip"), base],
+                                  os.path.abspath(f"{out}/Praccy-{label}.zip"), base],
                                  cwd=parent, check=True)
               else:
                   raise SystemExit(f"unknown artifact kind {kind!r}")
@@ -137,6 +140,11 @@ jobs:
     # that has been out for a while.
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      # `gh release create` works out which repository to publish to from the
+      # git checkout, so without this the step fails with "not a git
+      # repository" after every artifact has been downloaded and staged.
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: downloads
@@ -150,6 +158,11 @@ jobs:
           cp -R downloads/Praccy-macOS/. release/
           cp downloads/Praccy-Windows/Praccy.exe release/ 2>/dev/null || true
           cp downloads/Praccy-Linux/Praccy.AppImage release/ 2>/dev/null || true
+          # Refuse to publish a release that is missing a platform, rather than
+          # shipping one quietly.
+          for expected in Praccy-macOS.zip Praccy.exe Praccy.AppImage; do
+            [ -f "release/$expected" ] || { echo "missing $expected"; exit 1; }
+          done
           ls -la release
 
       - name: publish
