@@ -87,25 +87,41 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          python - <<'PY' > /tmp/paths.txt
-          import json
-          for a in json.load(open("dist/artifacts.json"))["artifacts"]:
-              print(a["kind"], a["path"])
+          # The paths are read by Python rather than parsed out of the JSON by
+          # shell, and written null-separated rather than line-separated. The
+          # manifest is written on the platform that built it, so on Windows it
+          # contains backslashes -- and Git Bash hands the shell a file that has
+          # picked up a carriage return, which `cp` then takes to be part of the
+          # filename. Both of those cost a full build to find out.
+          python - <<'PY'
+          import json, os, shutil, subprocess, sys
+
+          artifacts = json.load(open("dist/artifacts.json"))["artifacts"]
+          out = "out"
+          os.makedirs(out, exist_ok=True)
+          host = sys.platform
+
+          for entry in artifacts:
+              kind, path = entry["kind"], entry["path"]
+              if kind == "appimage":
+                  shutil.copy2(path, f"{out}/Praccy.AppImage")
+                  os.chmod(f"{out}/Praccy.AppImage", 0o755)
+              elif kind == "onefile":
+                  name = "Praccy.exe" if host == "win32" else f"Praccy-{host}"
+                  shutil.copy2(path, f"{out}/{name}")
+              elif kind == "onedir":
+                  # Zip from inside the bundle's own directory, so the archive
+                  # contains Praccy.app and not dist/<target>/Praccy.app. Finder
+                  # unpacks the first and leaves the second in a folder.
+                  parent, base = os.path.split(os.path.normpath(path))
+                  subprocess.run(["zip", "-qry",
+                                  os.path.abspath(f"{out}/Praccy-{host}.zip"), base],
+                                 cwd=parent, check=True)
+              else:
+                  raise SystemExit(f"unknown artifact kind {kind!r}")
+          for name in sorted(os.listdir(out)):
+              print(f"  {name}  {os.path.getsize(os.path.join(out, name))} bytes")
           PY
-          while read -r kind path; do
-            case "$kind" in
-              appimage) cp "$path" "out/Praccy.AppImage"; chmod +x "out/Praccy.AppImage" ;;
-              onefile)
-                if [ "$RUNNER_OS" = "Windows" ]; then cp "$path" out/Praccy.exe
-                else cp "$path" "out/Praccy-$RUNNER_OS"; fi ;;
-              onedir)
-                # Zip from inside the bundle's own directory, so the archive
-                # contains Praccy.app and not dist/<target>/Praccy.app. Finder
-                # unpacks the first and leaves the second in a folder.
-                (cd "$(dirname "$path")" && zip -qry "$GITHUB_WORKSPACE/out/Praccy-$RUNNER_OS.zip" "$(basename "$path")") ;;
-            esac
-          done < /tmp/paths.txt
-          ls -la out
 
       - uses: actions/upload-artifact@v4
         with:
