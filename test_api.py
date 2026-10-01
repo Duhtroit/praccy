@@ -321,6 +321,39 @@ for name in ("key-creamy", "key-clicky"):
     expect(f"{name} is not truncated", len(served) > 1000, str(len(served)))
 
 print()
+print("Static files")
+print("=" * 64)
+
+# A URL path is not a filesystem path. They agree on macOS and disagree
+# everywhere else: `os.path.normpath("/style.css")` is "/style.css" here and
+# "\\style.css" on Windows, `lstrip("/")` does not remove a leading backslash,
+# and `os.path.join` then treats it as absolute and discards the drive letter.
+# The result was "C:\style.css", the traversal guard correctly refused it, and
+# every static file on Windows answered 403 -- an app that loads its HTML and
+# then cannot load its stylesheet, its scripts or its fonts.
+#
+# This is checked by exercising the real handler over HTTP for the assets the
+# interface cannot render without, and by refusing traversal in both the
+# forward-slash and backslash spellings, since a client can send either.
+for asset in ("/style.css", "/app.js", "/store.js", "/progress.js", "/sound.js",
+              "/fonts/InterVariable.woff2"):
+    try:
+        with urllib.request.urlopen(BASE + asset, timeout=30) as response:
+            body = response.read()
+        expect(f"{asset} is served", response.status == 200 and len(body) > 100,
+               f"{response.status}, {len(body)} bytes")
+    except urllib.error.HTTPError as exc:
+        expect(f"{asset} is served", False, f"HTTP {exc.code}")
+
+for escape in ("/../cbp/server.py", "/..%2f..%2fsecrets", "/./../settings.py"):
+    try:
+        with urllib.request.urlopen(BASE + escape, timeout=30) as response:
+            code = response.status
+    except urllib.error.HTTPError as exc:
+        code = exc.code
+    expect(f"refuses {escape}", code in (403, 404), str(code))
+
+print()
 print("Sound persistence")
 print("=" * 64)
 

@@ -64,10 +64,30 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_file(self, relative: str):
-        # Refuse anything that tries to escape the web root.
-        safe = os.path.normpath(relative).lstrip("/")
-        path = os.path.join(WEB_ROOT, safe)
-        if not os.path.abspath(path).startswith(os.path.abspath(WEB_ROOT)):
+        # Resolve a URL path to a file inside the web root.
+        #
+        # Written with explicit segment handling rather than
+        # `os.path.normpath(...).lstrip("/")` because that idiom is correct only
+        # on a platform whose separator is "/". On Windows, `normpath` rewrites
+        # "/fonts/x.woff2" to "\\fonts\\x.woff2", `lstrip("/")` does not strip a
+        # leading backslash, and `os.path.join` then treats the result as an
+        # absolute path and throws the drive letter away -- producing
+        # "\fonts\x.woff2", which is not under the web root at all. The guard
+        # below then correctly refuses it, and the symptom is a 403 on every
+        # static file: the interface loads its HTML and then cannot load its
+        # stylesheet, its scripts or its fonts.
+        #
+        # So the path is treated as what it is -- a list of URL segments -- and
+        # ".." is rejected outright rather than being normalised and hoped for.
+        # That is both correct on every platform and a clearer refusal.
+        parts = [part for part in relative.replace("\\", "/").split("/")
+                 if part and part != "."]
+        if any(part == ".." for part in parts):
+            self._send_json({"error": "forbidden"}, 403)
+            return
+        path = os.path.join(WEB_ROOT, *parts)
+        root = os.path.abspath(WEB_ROOT)
+        if os.path.commonpath([root, os.path.abspath(path)]) != root:
             self._send_json({"error": "forbidden"}, 403)
             return
         if not os.path.isfile(path):
