@@ -1,0 +1,91 @@
+# Build distributable binaries for Windows and Linux.
+#
+# PyInstaller is not a cross-compiler: it links against the extension modules of
+# the interpreter it is installed into, so a Windows executable has to be built
+# by Windows and a Linux one by Linux. This workflow is the reason
+# tools/build_portable.py can be a single script: it is run once per platform,
+# on that platform's own runner, and the artifacts come back as files to hand
+# over.
+#
+# Push a tag, or run it by hand from the Actions tab, and the two binaries
+# appear under the run's summary as artifacts.
+
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+          - os: ubuntu-latest
+            name: Linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 3.12 rather than "latest", because the app is pinned to a version on
+      # macOS and a build that silently moves to 3.13 is a build that might not
+      # reproduce. PyInstaller 6.22 and pywebview 6.x are the tested pair.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pyinstaller>=6.6" "pywebview>=5"
+
+      # Linux needs the webview GTK libraries at build time, or PyInstaller
+      # cannot find the modules pywebview imports and the frozen app dies at
+      # startup with a bare ImportError. These are the same libraries the app
+      # needs at run time, which is why they are installed rather than merely
+      # noted.
+      - name: linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-0 libgtk-3-0 libgirepository1.0-dev \
+            libcairo2 libpango-1.0-0 libxkbcommon0
+
+      # A single file, because a single file is what you send to someone. The
+      # AppImage on Linux is produced by this same step.
+      - name: build
+        run: python tools/build_portable.py --onefile
+
+      # The build's own checks (fonts present, assets present, executable
+      # non-trivial) are worth more than a green exit code, so the artifact is
+      # run here too, as it will actually be shipped. The path comes from the
+      # manifest rather than being written out by hand, because it depends on
+      # the OS, the architecture and --onefile all at once.
+      - name: verify the artifact runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          exe=$(python -c "import json;print(json.load(open('dist/artifacts.json'))['artifacts'][0]['path'])")
+          echo "running $exe"
+          ls -la "$exe"
+          # --check starts the server, fetches the page and both typefaces, and
+          # exits. It needs no display, which is what makes it usable here.
+          "$exe" --check
+
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Praccy-${{ matrix.name }}
+          path: |
+            dist/*/Praccy.exe
+            dist/*/Praccy
+            dist/*.AppImage
+            dist/artifacts.json
+          if-no-files-found: error

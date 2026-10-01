@@ -1,0 +1,18 @@
+# Build output for the Mac app. dist/ holds the built .app and a 66MB cached
+# copy of the Python download; neither belongs in a repository, and the cache is
+# reproducible with `python3 tools/build_app.py`.
+dist/
+
+# Python bytecode. The app sets PYTHONDONTWRITEBYTECODE, but a plain
+# `python3 -m cbp.server` in the working tree still creates these.
+__pycache__/
+*.py[cod]
+
+# The detached gate runner, which is a scratch harness rather than a test.
+# The tests it drives -- test_api.py, tools/test_*.py -- are tracked.
+tools/_gate.py
+
+.DS_Store
+
+# Freebuff's own scratch directory, not part of the project.
+.freebuff/

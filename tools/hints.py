@@ -1,0 +1,603 @@
+#!/usr/bin/env python3
+"""The hints shipped with every question.
+
+Written by hand, in the order the questions are listed. A hint names the
+direction to look in, not the answer: the first one says what the input is
+really asking about, the second one names the technique or the invariant.
+Neither shows code for the question it belongs to.
+
+`tools/fetch_hints.py` pulls the hints LeetCode publishes for the questions we
+took from there. They are useful as a second opinion on a handful of problems
+and useless on the rest -- 49 of the 72 have none published at all -- so they
+live in `tools/leetcode_hints.json` as reference rather than shipping directly.
+
+Everything here is checked by `tools/build_hints.py`, which refuses to write
+`cbp/data/hints.json` while any question is missing a hint or any hint names a
+question that does not exist.
+"""
+
+from __future__ import annotations
+
+HINTS: dict = {
+    "ab-check": [
+        "Only the totals matter. The positions of the `a`s and `b`s are never used.",
+        "Count both letters in one pass over the string, then compare the two counts. Whatever is not an `a` or a `b` is skipped.",
+    ],
+    "additive-persistence": [
+        "The answer is a number of rounds, so the work is a loop that either ends or keeps going.",
+        "Peel a digit off with `% 10` and drop it with `// 10` to build each digit sum, then replace the number with that sum. A number that is already a single digit takes zero rounds.",
+    ],
+    "alphabet-soup": [
+        "Nothing is being searched for here: the characters need to end up in a different order.",
+        "Sort the characters and join them back into a string. Python's sort is case sensitive, which is all this question needs.",
+    ],
+    "arith-geo": [
+        "Two short sequences are enough to describe the whole one: the first step, and whether it repeats.",
+        "Take the first difference and the first ratio, then check every later step against it. Return -1 before the loop if there are fewer than three numbers, and skip the ratio test when the first value is zero.",
+    ],
+    "array-addition-i": [
+        "Two numbers are added and their sum is judged. Nothing else about the array matters.",
+        "Track the largest and second largest values as you go, or sort and take the last two. Negative arrays are legal, so a starting value of 0 is a bug.",
+    ],
+    "array-matching": [
+        "The characters themselves are never compared.",
+        "Compare the two lengths and return the word `true` or the word `false`. Every case in this question has strings of different lengths, so check both orders before you trust it.",
+    ],
+    "basic-roman-numerals": [
+        "The symbols are not read left to right; they are consumed from largest to smallest.",
+        "Walk a table of value and symbol pairs in descending order, appending the symbol and subtracting its value while the number is still large enough. Include the subtractive pairs -- 900, 400, 90, 40, 9, 4 -- and they stop being special cases.",
+    ],
+    "binary-reversal": [
+        "The binary form is written most significant bit first. Reversing it turns the smallest bit into the largest.",
+        "Build the digits with `% 2` and `// 2`, and accumulate the result with `out = out * 2 + bit`. Leading zeros are not written, so the leading digit of the answer is always 1.",
+    ],
+    "bitwise-one": [
+        "Reading the number in base two is the whole task; no arithmetic on the value itself is needed.",
+        "Take `n % 2` and halve the number until nothing is left, or ask the language to format it and count the `1` characters. `n &= n - 1` is worth knowing: it clears exactly one set bit per round.",
+    ],
+    "changing-sequence": [
+        "The count starts at zero and the loop runs until the value is exactly 1.",
+        "Halve it; if the halved value is odd, subtract one instead. Count each pass. The input can be too old to work for anything else, so do not try to shortcut the loop with a formula.",
+    ],
+    "check-nums": [
+        "One value is enough to decide the answer, and it is not necessarily the first one.",
+        "Return the word `false` as soon as a value below zero turns up, the word `true` if the loop finishes. Zero is not below zero, and an empty array is vacuously `true`.",
+    ],
+    "counting-minutes-i": [
+        "A clock time is a position in the day; the question wants the distance between two of them.",
+        "Convert each time to minutes past midnight with `hours * 60 + minutes`, then subtract one from the other. The answer is a list holding that single number.",
+    ],
+    "dash-insert": [
+        "A dash is decided by a position and by the character in that position, so the loop needs the index as well as the character.",
+        "Insert a dash before a character when the position is odd (counting the first character as position 0), the character is a digit, and the character before it is also a digit. `13579` becomes `1-35-79`, not `1-3-5-7-9`.",
+    ],
+    "division-stringified": [
+        "This is a base conversion with an awkward base, and the format is not quite what the prompt calls it.",
+        "Divide down through seconds, then minutes, then hours, using `%` for each remainder. Pad minutes and seconds to two digits with a leading zero, but leave the hours unpadded: 100 seconds is `0:01:40`.",
+    ],
+    "even-pairs": [
+        "A pair is one even value and one odd value, and nothing about the order changes that.",
+        "Count the even values, count the odd values, multiply. `n` even and `m` odd values make exactly `n * m` mixed pairs.",
+    ],
+    "ex-oh": [
+        "Two counts and one comparison, exactly like counting any other pair of characters.",
+        "Count the `x` characters and the `o` characters and compare. Case matters here: only the lower case letters count.",
+    ],
+    "first-factorial": [
+        "Every value from 1 up to the input is multiplied together. The order does not matter.",
+        "Start the running product at 1, not 0, and multiply by each value from 2 upwards. Starting at 0 makes every answer 0, which is the classic version of this bug.",
+    ],
+    "first-reverse": [
+        "The characters are the same set; only their order changes.",
+        "Reversing a sequence is a solved problem in every language -- a slice, a reverse method, or the standard library. Spacing and punctuation come out untouched.",
+    ],
+    "hamming-distance": [
+        "The two strings are compared position by position, so they are walked together rather than one at a time.",
+        "Zip the two sequences into pairs and count the pairs that differ. If the lengths differ, stop at the shorter one, which is what makes it a hamming distance.",
+    ],
+    "largest-pair": [
+        "The pair is checked against a property of the whole list, not against the list's contents.",
+        "Sum the values, and if that sum is odd there is no answer. Otherwise the target is half the sum, and you check whether both of the pair's values add up to it.",
+    ],
+    "letter-capitalize": [
+        "Words are separated by spaces, and only the first character of each one changes.",
+        "Split on whitespace, upper case the first character of each word and leave the rest alone, then join the words back with a single space. The case of the remaining letters is preserved exactly.",
+    ],
+    "letter-changes": [
+        "Two transformations are applied in order, and the second one depends on the result of the first.",
+        "Shift each letter one forward in the alphabet, wrapping `z` back to `a`. Then upper case any vowel in the shifted result. Position 26 does not exist, so the wrap is a modulo over 26 letters.",
+    ],
+    "letter-count-i": [
+        "The answer is built from frequency, not from order.",
+        "Count how often each character appears, keep the ones that appear exactly once, sort them, and join. A character that appears twice is never mentioned again.",
+    ],
+    "longest-increasing-sequence": [
+        "The sequence does not have to be contiguous, so the answer at each position depends on positions before it.",
+        "Keep a best length per index, and for each new value look back at every smaller value before it. `best[i] = max(best[j]) + 1` over all `j` where `arr[j] < arr[i]`, and the answer is the largest value in that table. Strictly smaller: equal values do not extend a sequence.",
+    ],
+    "longest-word": [
+        "Punctuation has to be removed before anything is measured, and a word can end at the end of the string.",
+        "Split on any character that is not a letter or a digit, keeping only the words that are left. Walk them in order and replace the best only when the new word is strictly longer, which is what makes ties keep the earlier word.",
+    ],
+    "mean-mode": [
+        "The value that appears most often wins, so the array is counted rather than sorted or summed.",
+        "Count each value, then take the value with the largest count. Keep the first one you meet when two counts tie, which happens to be the order the values first appear in the array.",
+    ],
+    "multiplicative-persistence": [
+        "Same shape as the additive version, with a different way of collapsing the digits.",
+        "Multiply the digits together with `% 10` and `// 10`, replace the number with that product, and count the rounds. A single digit takes zero rounds, so the loop is `while n > 9`.",
+    ],
+    "nonrepeating-character": [
+        "Two passes: one to learn the frequencies, one to find the first position that qualifies.",
+        "Count every character first, then walk the string again and return the index of the first character whose count is 1. If nothing qualifies, the answer is -1 rather than 0.",
+    ],
+    "number-addition": [
+        "The number is treated as a sequence of digits, not as a value.",
+        "Take the last digit with `% 10`, add it, and drop it with `// 10`. The loop ends when the number reaches zero, at which point every digit has been visited.",
+    ],
+    "off-line-minimum": [
+        "The question is about a gap in a sequence that starts at 1, so the size of the numbers is what matters, not their order.",
+        "Put every value in a set and then walk 1, 2, 3 upwards until you reach a number the set does not contain. That number is the answer; counts and duplicates in the input make no difference.",
+    ],
+    "other-products": [
+        "Every output entry is the same product with one factor taken out of it.",
+        "Multiply the whole array once. Each answer is that total divided by the element it replaces -- with one special case: when the element is zero the product of the others is not the total divided by zero.",
+    ],
+    "overlapping-ranges": [
+        "Two ranges overlap when neither one finishes before the other starts.",
+        "Parse each `a-b` string into a pair of numbers and test every pair of ranges: they overlap when `start1 <= end2` and `start2 <= end1`. The bounds are inclusive, so a range ending at 3 and one starting at 3 count as overlapping.",
+    ],
+    "palindrome": [
+        "A palindrome is a comparison of two copies of the same string, one of them reversed.",
+        "Compare the string with its own reverse and return the word `true` or `false`. Case and punctuation are not mentioned in this question, so leave them alone.",
+    ],
+    "powers-of-two": [
+        "The count is how many times the value can be halved before it stops being a whole number above 1.",
+        "Halve with `// 2` and count each pass, stopping when the value reaches 1. Do not take a logarithm of this: the halving loop is exact and logarithms are not.",
+    ],
+    "product-digits": [
+        "Same digit walk as the sum version, with multiplication instead of addition.",
+        "Start the running product at 1 and multiply in each digit as you peel it off. Starting at 0 collapses every answer to 0.",
+    ],
+    "rectangle-area": [
+        "Three numbers arrive and the area only uses two of them, so read the prompt carefully before choosing which.",
+        "The third value in the array is the width and the first is the length. Multiply those two and ignore the one in the middle.",
+    ],
+    "second-greatlow": [
+        "The word is `distinct`. Values that repeat are one value, not several.",
+        "Deduplicate, sort ascending, and take the second entry. Fewer than two distinct values leaves nothing to return, and the prompt says what to send back in that case.",
+    ],
+    "simple-adding": [
+        "There is no loop to write here in most languages; the question is whether you trust the accumulator's starting value.",
+        "Sum the array with the language's own reduction. Zero is the correct starting value for a sum, and negative values are legal input.",
+    ],
+    "simple-symbols": [
+        "The rule is about the neighbourhood of each letter, and the two ends of the string have only one neighbour each.",
+        "Walk the string with an index. When the character is a letter, check that there is a character before it and after it and that both are `+`. Anything that is not a letter is ignored, including digits and the symbols themselves.",
+    ],
+    "superincreasing": [
+        "Each value is judged against the sum of everything before it, so one running total carries the whole check.",
+        "Keep a running sum as you walk forward. As soon as a value is less than or equal to the sum so far, the answer is `false`; add it to the sum otherwise. The first value is always compared against zero.",
+    ],
+    "swap-case": [
+        "Each character decides on its own; nothing about the others changes its case.",
+        "Most languages have this built in. Writing it by hand means testing each character for upper and lower case and converting in place, leaving digits and punctuation alone.",
+    ],
+    "third-greatest": [
+        "Distinct values again, and this time the third one rather than the second.",
+        "Deduplicate, sort descending, and take the entry at index 2 -- which exists only when there are at least three distinct values.",
+    ],
+    "time-convert": [
+        "A number of minutes is an hours value and a remainder, computed in that order.",
+        "Divide by 60 for the hours and take the remainder for the minutes, then format the minutes to two digits with a leading zero. Write it by hand: the prompt rules out the date and time library.",
+    ],
+    "vowel-count": [
+        "Every character is tested once. The answer is a total, not a position or a boolean.",
+        "Compare each character against the set of vowels and count the matches. `y` is deliberately not in that set for this question, and upper case vowels do count in the Python reference.",
+    ],
+    "wave-sorting": [
+        "Sorting first gives you the two ends of the answer: the large values and the small ones.",
+        "Sort ascending, then take alternately from the top and the bottom of the sorted list, largest first. Picking the biggest value available at every step is what makes the wave hold.",
+    ],
+    "word-count": [
+        "Words are runs of non-space characters, and runs of several spaces are one separator.",
+        "Split the string on whitespace and take the length of the result. The count comes back as a string rather than a number, which the prompt asks for explicitly.",
+    ],
+    "valid-anagram": [
+        "Two strings are anagrams when they contain exactly the same characters in exactly the same quantities. Order is irrelevant.",
+        "Count the characters of the first string in a dictionary, then walk the second string subtracting from those counts. A character that is missing, or one whose count runs out, means the answer is `false`. Sorting is ruled out by the prompt.",
+    ],
+    "contains-duplicate": [
+        "One repeat is enough, so the first repeated value ends the search.",
+        "Keep a set of everything seen so far and return as soon as a value is already in it. Adding first and checking second turns a duplicate into an immediate answer.",
+    ],
+    "arith-geo-ii": [
+        "Identical to the first version of this question, apart from how many numbers are needed before you commit.",
+        "Compute the first difference and the first ratio, check every step against them, and return -1 when neither holds. Fewer than three numbers cannot show a pattern at all.",
+    ],
+    "array-addition": [
+        "The pair is chosen by a property of the values, and the answer is built from the numbers themselves rather than their positions.",
+        "Parse the comma separated string into integers, then look for two values that add to zero and concatenate their digits. Return the prompt's fallback phrase when no such pair exists.",
+    ],
+    "bracket-matcher": [
+        "A closing bracket has to match the most recent opening one, so the state is a last-opened value rather than a running total.",
+        "Push every opening bracket onto a stack. On a closing bracket, pop and check the type; an empty stack or a mismatched type means `false`. The answer is true only when the stack is empty at the end -- all other characters are ignored.",
+    ],
+    "caesar-cipher": [
+        "The shift is applied within the alphabet, not within the character set, and the case survives it.",
+        "Shift each letter by wrapping around 26 positions, and leave anything that is not a letter exactly as it is. A shift of 26 or more wraps all the way around, so the modulo matters.",
+    ],
+    "coin-determiner": [
+        "The coins are a list rather than the usual denominations, so no greedy shortcut is safe here.",
+        "Build a table of the best answer for every amount from 1 up to the target, each one derived from a smaller amount plus one coin. Record an unreachable amount rather than a zero, or an impossible target looks like a free one.",
+    ],
+    "consecutive": [
+        "A run only counts once it has more than one value in it.",
+        "Sort the values and walk forward counting the length of the current run. Close a run when the next value breaks the chain, and close the last one after the loop, which is the step everyone forgets.",
+    ],
+    "counting-minutes": [
+        "This is the multi-pair version of the single-gap question, and the gaps are between neighbours rather than from the first time.",
+        "Convert every time to minutes past midnight, then subtract each entry from the one after it. The answer has one fewer entry than the input, since a list of n times has n-1 gaps.",
+    ],
+    "letter-count": [
+        "The length of each string is the only thing being tested.",
+        "Count the strings whose length equals the given number and return that count as a string. The `n` is a length, not an index.",
+    ],
+    "palindrome-two": [
+        "The characters that stop it being a palindrome are the ones that are not letters or digits.",
+        "Strip everything that is not alphanumeric, lower case what is left, then compare that with its reverse. No copy of the original punctuation comes back in the answer.",
+    ],
+    "prime-time": [
+        "The answer counts primes below the input, and 2 is the only even prime.",
+        "Test each value below the input for primality by trial division up to its square root, and count the ones that pass. Values below 2 are never prime, and the input itself is not included.",
+    ],
+    "run-length": [
+        "The output pairs a count with a character, so runs are measured rather than compressed away.",
+        "Walk the string comparing each character with the previous one, and emit count-then-character whenever the run breaks. Emit the final run after the loop, and handle the empty string before you start.",
+    ],
+    "string-reduction": [
+        "The result depends on the order the pairs are merged in, so the string is folded left to right rather than picked apart.",
+        "Keep one character pending. Each new character merges with it into the letter at the absolute difference of their alphabet positions, and that merged letter becomes the new pending character.",
+    ],
+    "string-scramble": [
+        "Order does not matter, but quantity does: each character of the first string can be spent only once.",
+        "Check that every character of the second string turns up in the first, removing one copy as you match it. A character that appears twice in the second string needs two copies in the first.",
+    ],
+    "three-five-multiples": [
+        "The range is inclusive at both ends, and a number divisible by both 3 and 5 is still added once.",
+        "Walk every number from the start to the limit and add the ones divisible by 3 or by 5. The `or` is what keeps the multiples of 15 from being counted twice.",
+    ],
+    "two-sum": [
+        "Every value has exactly one partner value it needs: the difference between it and the target.",
+        "Walk the array once holding the values already seen in a set. For each value, check whether its partner is already there, and add the value to the set after the check -- not before, or a value pairs with itself.",
+    ],
+    "maximum-subarray": [
+        "The best answer ending at each position is built from the best answer ending at the position before it.",
+        "The running total either takes the new value or the new value plus the previous running total, whichever is larger, and the answer is the largest running total ever seen. The array is guaranteed to be non-empty, and every value can be negative, so seeding from 0 is wrong.",
+    ],
+    "valid-palindrome-ii": [
+        "The prompt is asking whether one deletion is enough. Brute force tries every deletion; there are only two deletions worth trying.",
+        "Walk inwards from both ends until the characters disagree. At that point either the left character or the right one has to go, so test the two remaining substrings and, if neither works, the answer is `false`.",
+    ],
+    "best-time-to-trade": [
+        "One pass over the prices answers it, provided you remember the cheapest price so far before looking at today's price.",
+        "Track the lowest price seen and the best profit so far. At each price the candidate profit is the price minus that low, and the low is updated only afterwards.",
+    ],
+    "house-robber": [
+        "The choice at each house interacts with the two decisions before it, and nothing further back.",
+        "Keep two values: the best total that skips the current house and the best total that takes it. The new skipping value is the old taking value, and the new taking value is the larger of the two plus this amount.",
+    ],
+    "longest-common-prefix": [
+        "The prefix belongs to every string, so one of them can stand in for all of them while you shorten it.",
+        "Start with the first string as the candidate prefix and trim its end until every other string starts with it. An empty list and a trimmed-to-nothing prefix both mean the empty string.",
+    ],
+    "longest-repeating-char": [
+        "Consecutive is the operative word: the same character twice in different places is not a run.",
+        "Walk with a running length that resets to 1 whenever the current character differs from the previous one, and keep the largest value seen. The empty string has no run, so it returns 0 rather than 1.",
+    ],
+    "missing-number": [
+        "The array holds n values drawn from 0 to n, so one value is missing and the sum says which.",
+        "The sum of 0 through n is known in closed form. Subtract the sum of the array from it and you are left with the missing value -- no set, no sort, one pass.",
+    ],
+    "plus-one": [
+        "The digit that changes is at the end, and a 9 is the case that reaches further back.",
+        "Walk from the last digit forward, incrementing and returning as soon as a digit is below 9. If every digit was a 9, they all become 0 and a new 1 is added at the front.",
+    ],
+    "product-except-self": [
+        "Every output entry is the same product with one factor taken out, and the prompt forbids dividing by it.",
+        "Two passes: run a product left to right and store it as the prefix for each position, then run another product right to left and multiply it in. Each position ends up holding the product of everything on both sides of it.",
+    ],
+    "reverse-words": [
+        "The words stay whole; only their order changes.",
+        "Split on whitespace, which collapses runs of spaces, then join the words in reverse order with a single space between them.",
+    ],
+    "search-insert-position": [
+        "The array is sorted and the answer is about a position, which is what makes the fast search available.",
+        "Binary search for the leftmost index where the value is greater than or equal to the target. A search that ends without finding the target has already been told where the target belongs.",
+    ],
+    "single-number": [
+        "A set or a counting pass both work and both spend memory that the answer does not need.",
+        "Exclusive-or every value together. Every repeated value cancels itself out and the value that appears once is what remains. The identity element is 0, so that is the accumulator's starting value.",
+    ],
+    "lc-decode-ways": [
+        "Each digit can be read on its own or joined to the one before it, so the count at each position is the sum of two earlier counts.",
+        "Track the ways to reach the previous position and the one before that. A digit that is not 0 contributes the previous count; a pair from 10 to 26 contributes the count before it. A 0 that cannot be part of a valid pair means the whole answer is 0.",
+    ],
+    "lc-search-rotated": [
+        "The array is no longer sorted, but one half of it always still is.",
+        "At the middle, work out whether the left half or the right half is the ordered one, then decide from the bounds alone whether the target lies inside it. Every comparison still throws away half the array.",
+    ],
+    "lc-subarray-sum-k": [
+        "Subarrays are counted, not found, so the answer is a running total rather than a pair of indices.",
+        "Walk forward holding a running sum and a count of how often each running sum has been seen. At each step the subarrays that end here are the ones whose earlier running sum was the current sum minus k, so seed the count with a single zero.",
+    ],
+    "lc-container-water": [
+        "The area is a width multiplied by a height, and only two bars matter for any one container.",
+        "Start with the widest possible pair and move inwards, always moving the pointer at the shorter bar. Moving the taller one can only reduce the area, which is what makes the single pass correct.",
+    ],
+    "lc-candy": [
+        "A child's answer depends on both neighbours, and both constraints cannot be settled in one direction.",
+        "Give everyone one sweet, sweep left to right handing an extra to anyone rated above their left neighbour, then sweep right to left doing the same for the right neighbour and keeping the larger of the two counts. Equal ratings impose nothing.",
+    ],
+    "lc-first-missing-positive": [
+        "The answer is always between 1 and the length of the array plus one, which is a range the array itself is big enough to record.",
+        "Put each value in the position it would occupy if the array held 1, 2, 3 upwards, ignoring values outside that range and duplicates. Then scan for the first position holding the wrong value; if every position is right, the answer is one past the end.",
+    ],
+    "lc-median-two-sorted": [
+        "The median is decided by a split position in each array, not by merging them.",
+        "Binary search for a split of the smaller array that leaves exactly half the values on each side, then read the median from the four values either side of both splits. Handle the empty array and the odd total count separately.",
+    ],
+    "lc-trapping-rain-water": [
+        "The water above a bar is decided by the tallest bar on each side of it, whichever is shorter.",
+        "Sweep inwards from both ends keeping the tallest bar seen on each side, and add the depth above whichever side holds the shorter bar. Moving the shorter side never invalidates the other side's maximum.",
+    ],
+    "simple-mode": [
+        "Same as the other mode question: the value with the highest count, not the highest value.",
+        "Count the values and track the best count as you go. On a tie, keep the value you met first, which is what the array's own order gives you.",
+    ],
+
+    "g-valid-parentheses": [
+        "A closing bracket is only legal if it matches the most recently opened one still waiting to be closed.",
+        "Keep a stack of the opening brackets. Push on an opening bracket, and on a closing bracket pop and compare the types. The string is valid only when nothing is left on the stack at the end.",
+    ],
+    "g-merge-two-sorted-lists": [
+        "Two sequences are already in order, so the smallest remaining value is always at one of the two fronts.",
+        "Walk two cursors forward, taking whichever front value is smaller and appending it to the answer. When one side runs out, the rest of the other side is already in order and can be appended whole.",
+        "In this harness a list arrives as its values in order, so the answer is a fresh list rather than a set of relinked nodes.",
+    ],
+    "g-best-time-to-trade": [
+        "The profit for any day depends on one number: the cheapest price before it.",
+        "Track the lowest price seen so far and the best profit seen so far, and update the profit before the low, because the same day cannot be both the buying day and the selling day.",
+    ],
+    "g-valid-palindrome": [
+        "The cleaned-up string is what gets compared, and the characters that get removed are everything that is not a letter or a digit.",
+        "Lower case the letters, drop the rest, and compare the result with its reverse. Two pointers from the ends avoid building a second string, if you would rather not allocate one.",
+    ],
+    "g-invert-binary-tree": [
+        "Every node in the tree has the same instruction, which is the sign that the answer is a recursion.",
+        "Swap the two children of every node, then recurse into both. Doing it bottom-up or top-down both work; what matters is that the swap happens at every node rather than at the root alone.",
+        "A tree arrives here as a level-order array, so the children of the node at index p are at 2p+1 and 2p+2.",
+    ],
+    "g-binary-search": [
+        "Two bounds and a comparison that throws away half of what is between them.",
+        "Keep low and high and look at the middle. Move low above the middle or high below it, and loop while low is still at or below high. Midpoints that only move by one element are not this question.",
+    ],
+    "g-flood-fill": [
+        "Remember the starting colour before you repaint it, or the check for \"same colour as where we came from\" stops working after the first pixel.",
+        "Walk outwards from the starting pixel in four directions, repainting and queueing each matching pixel. Repaint as you queue it, and return immediately when the starting pixel already has the new colour, or a guard on the old colour will never fire again.",
+    ],
+    "g-lca-bst": [
+        "In a search tree, the ordering tells you which side of the current node both values are on.",
+        "Walk down from the root. If both values are smaller go left, if both are larger go right, and the first node where they part company -- or where the value is one of them -- is the answer.",
+    ],
+    "g-balanced-binary-tree": [
+        "The heights have to come back from the subtrees, so the recursion returns a number and the answer is whether any node's pair of numbers disagrees.",
+        "Return the height of each subtree, and use a sentinel such as -1 to mean \"already unbalanced somewhere below\" so one pass is enough rather than a height call per node.",
+    ],
+    "g-first-bad-version": [
+        "The list is 0s followed by 1s: the whole question is where the change happens.",
+        "Binary search for the leftmost 1 by keeping the lower bound moving when the middle is 0 and the upper bound moving when it is 1. If no 1 was ever found, the answer is -1 rather than the length of the list.",
+    ],
+    "g-ransom-note": [
+        "Each character of the magazine can be spent once, so the note is a subtraction rather than a membership test.",
+        "Count the magazine's characters, then walk the note subtracting one per character. The first time a count is already zero, the answer is false.",
+    ],
+    "g-climbing-stairs": [
+        "The number of ways to reach a step is the number of ways to reach the two steps below it.",
+        "Carry two values forward, starting from one way to stand still and one way to reach the first step. That is the Fibonacci recurrence, and two values are all the state it needs.",
+    ],
+    "g-longest-palindrome": [
+        "A palindrome is pairs, plus at most one character sitting in the middle.",
+        "Add up the largest even number from each character's count, then add one more if any character was left over unpaired. The \"at most one\" is why an odd count does not simply disqualify a character.",
+    ],
+    "g-reverse-linked-list": [
+        "Nothing here depends on what the values are, only on their order.",
+        "Relinking one node at a time is the exercise, and it needs three cursors: the previous node, the current one, and whatever the current one still points at. Save the next node before you overwrite the link, or the rest of the list is lost.",
+        "In this harness the list arrives as its values in order, so the answer is the same values the other way round.",
+    ],
+    "g-majority-element": [
+        "The guarantee that a majority exists is the whole reason a single pass can find it.",
+        "Keep a candidate and a count: a new value that is not the candidate decrements the count, and the candidate changes when the count reaches zero. Because the majority is more than half the values, it cannot be fully cancelled out.",
+    ],
+    "g-add-binary": [
+        "Adding the strings by hand is the same work as converting them, and it does not overflow.",
+        "Walk both strings from the right with a carry, emitting a digit and a new carry for each column. Keep going while either string has digits or a carry is still pending, then reverse the digits you collected.",
+    ],
+    "g-diameter-binary-tree": [
+        "The longest path through a node is not the longest path that ends at it.",
+        "Have the recursion return the height of each subtree while tracking the best left-plus-right sum seen anywhere. The two values are different, which is why one function returns one and updates the other.",
+    ],
+    "g-middle-linked-list": [
+        "Counting the length first is a pass you do not have to spend.",
+        "Run one cursor one step at a time and another two steps at a time. When the fast one runs off the end, the slow one is at the middle, and for an even count it lands on the second of the two middle values.",
+    ],
+    "g-maximum-depth-binary-tree": [
+        "A tree's depth is one more than the deeper of its two subtrees, and a missing node is depth zero.",
+        "Recurse into both children and take `1 + max` of the two, with a missing child returning 0. That base case is what makes a single node come out as 1 rather than 0.",
+    ],
+    "g-insert-interval": [
+        "The intervals, old and new, are all already in order, so this is three consecutive phases rather than a search.",
+        "Copy the intervals that end before the new one starts, then widen the new interval across every interval that overlaps it, then copy the rest. The overlap test is inclusive, so intervals that merely touch count as one.",
+    ],
+    "g-zero-one-matrix": [
+        "Every cell needs the distance to the nearest zero, and all of the zeros can start the search at once.",
+        "Seed a queue with every zero and expand outwards one ring at a time. Working outwards from all of the zeros together is what makes one pass enough; a separate search per cell is not.",
+    ],
+    "g-k-closest-points": [
+        "The distance is only ever compared, never reported, so the square root can be left out.",
+        "Rank the points by the sum of the squares of their coordinates and take the first k. When two distances are equal, the tie is broken by the coordinates themselves.",
+    ],
+    "g-longest-unique-substring": [
+        "The window is a run of distinct characters, and the only way it grows is by moving one edge forward.",
+        "Remember where each character was last seen. When a repeat turns up inside the current window, move the left edge to one past that previous sighting, but never backwards -- a sighting from before the window is not a repeat.",
+    ],
+    "g-three-sum": [
+        "Fixing one value turns the rest of the question into a pair-sum problem on the values after it.",
+        "Sort first, then fix each value and put one pointer just after it and one at the end, moving whichever side is needed to change the sum. The sort is also what makes skipping duplicate values easy, and duplicates are the part that is usually wrong.",
+    ],
+    "g-level-order-traversal": [
+        "One level is all that is being processed at a time, and the next level is entirely determined by the current one.",
+        "Keep a list of the nodes on the current level, collect their values, and build the next list from their children. A single queue that also tracks the level size does the same job.",
+    ],
+    "g-evaluate-rpn": [
+        "An operator always consumes the two values most recently produced, which is the definition of a stack.",
+        "Push numbers as they arrive; on an operator pop two, apply it, and push the result back. The first pop is the right-hand operand, and division discards the remainder toward zero rather than rounding down, which is not the same as a floor division.",
+    ],
+    "g-course-schedule": [
+        "This is asking whether the prerequisite graph has a cycle, not how many orders are possible.",
+        "Either peel off courses with no outstanding prerequisites until nothing is left, or run a depth-first search that marks a course as being on the current path and reports a cycle if it is reached again. A search that only remembers finished courses cannot see a cycle.",
+    ],
+    "g-coin-change": [
+        "The best answer for an amount is built from the best answer for a smaller amount.",
+        "Keep a table of the fewest coins for every amount up to the target, each one derived from an earlier entry plus one coin. Mark unreachable amounts with a value larger than any real answer, and only translate that to -1 at the very end.",
+    ],
+    "g-product-except-self": [
+        "Every entry is the product of everything before it multiplied by the product of everything after it, and both can be built in place.",
+        "Sweep left to right writing each running product into the output, then sweep right to left multiplying a second running product into the same slots. Neither pass needs a separate prefix or suffix array, which is what the question is really about.",
+    ],
+
+    "g-validate-bst": [
+        "Comparing each node with its own children is not enough: a value deep in a left subtree can still be larger than an ancestor.",
+        "Carry an allowed range down the recursion and narrow it at each step -- an upper bound when you go left, a lower bound when you go right. Every value must be strictly inside the range it inherits.",
+    ],
+    "g-number-of-islands": [
+        "Each unvisited land cell starts exactly one group, and everything reachable from it belongs to that same group.",
+        "Walk every cell; when one is unvisited land, count it and then flood outwards from it in four directions marking land as visited. Marking as you queue rather than when you pop keeps the same cell from being queued twice.",
+    ],
+    "g-rotting-oranges": [
+        "Rot spreads from every rotten orange at once, one ring per minute, which is a breadth-first search rather than a depth-first one.",
+        "Queue every rotten orange as a starting point and process the queue one whole level at a time, counting the levels. Count the fresh oranges as you scan, and if any are still fresh at the end the answer is -1 rather than the number of minutes.",
+    ],
+    "g-search-rotated": [
+        "The rotation broke the ordering, but at the midpoint one of the two halves is always still sorted.",
+        "Compare the middle with the low bound to see which half is the ordered one, then check whether the target falls inside that half's range. Move the bounds accordingly and the search is still halving the array each time.",
+    ],
+    "g-combination-sum": [
+        "The same value may be used again, so the recursion has to be able to stay where it is as well as move on.",
+        "Sort the candidates and recurse with a starting index, allowing that index itself to be reused at the next level. Pruning as soon as a candidate exceeds what is left of the target is what keeps it fast, and the sort is what makes that possible.",
+    ],
+    "g-permutations": [
+        "The answer is every ordering, so the recursion chooses a value at each position rather than deciding whether to include one.",
+        "Recurse down with the values not yet used, or swap values within the array and recurse on the rest of it. Either way the same value never appears twice in one ordering.",
+    ],
+    "g-merge-intervals": [
+        "Overlaps are only visible once the intervals are in order by their starts.",
+        "Sort by start, then walk and either extend the last interval in the answer or append a new one. Intervals that merely touch count as one, so the comparison is inclusive.",
+    ],
+    "g-lca-binary-tree": [
+        "Any binary tree, so the ordering that made the search-tree version a simple walk is not available.",
+        "Have the recursion report whether each subtree contains either value. The first node whose two children both report something -- or which is one of the values itself -- is the answer, and a value that is not in the tree has to be reported as missing rather than treated as found.",
+    ],
+    "g-accounts-merge": [
+        "People are joined through shared addresses, so an address is a node and two addresses in the same row are connected.",
+        "The first row an address appears in decides the name, then group addresses by their earliest sighting and merge the groups as you go. Sorting the addresses inside each merged row is part of the output, not an extra.",
+    ],
+    "g-sort-colors": [
+        "Counting the values and rewriting the array is a correct two-pass answer, and the question is asking for the one-pass version.",
+        "Keep three cursors: the end of the 0s, the value being examined, and the start of the 2s. A 0 swaps backwards and advances both cursors, a 2 swaps forwards and does not advance the middle one, and the middle cursor is the only one that always moves.",
+    ],
+    "g-word-break": [
+        "The break has to happen somewhere, so the question is which prefix positions are reachable from the start.",
+        "Keep a boolean per position meaning \"the string up to here can be broken into words\". Each position is true when some earlier reachable position is followed by a dictionary word, and the answer is the last flag.",
+    ],
+    "g-can-partition": [
+        "Equal halves means one half has to total exactly half of everything, and an odd total settles it immediately.",
+        "Run a boolean array over the possible subset sums up to half the total, marking each sum reachable, and iterate the sums downwards so a value is used at most once. The array plus the running total is all the state needed.",
+    ],
+    "g-atoi": [
+        "The pieces of the grammar are applied in a fixed order, and getting the order wrong is where every wrong answer comes from.",
+        "Skip spaces, then read at most one sign, then read digits until the first non-digit, and clamp the result to the 32-bit range. Every step stops cleanly at a character that does not belong to it, and the answer is 0 when no digit was ever read.",
+    ],
+    "g-spiral-matrix": [
+        "Four boundaries move inwards, and the answer is one flat list rather than a list of rows.",
+        "Track top, bottom, left and right, walk each of the four sides and then shrink the boundary you just finished. Re-check that the boundaries have not crossed before each side, or a single remaining row gets walked twice.",
+    ],
+    "g-subsets": [
+        "Every value is either in a subset or out of it, and those two halves of the answer are the same size.",
+        "Start with the empty subset and double the answer at each value by appending the value to every subset built so far. Build the new half from a snapshot of the old one, or the additions contaminate themselves.",
+    ],
+    "g-right-side-view": [
+        "This is a level-order traversal that keeps one value per level instead of all of them.",
+        "Process a level at a time and record the last node of each level. If children are appended left to right, the last node of the level is the rightmost one, so no separate right-to-left pass is needed.",
+    ],
+    "g-longest-palindromic-substring": [
+        "A palindrome is settled by its centre, and the centre is either one character or a gap between two of them.",
+        "Try every centre -- single-character and two-character -- and expand outwards while the two ends match, keeping the best run. That is O(n squared) and perfectly acceptable here; the prompt's tie-break is the earliest such run.",
+    ],
+    "g-unique-paths": [
+        "Every cell can only be reached from above or from the left, so its count is the sum of two neighbours.",
+        "Fill a single row of running totals: each entry becomes itself plus the entry to its left, with the first entry staying 1. Handle a zero row or column before you start, since there are no paths through them.",
+    ],
+    "g-build-tree": [
+        "The first value of the preorder walk is the root, and its position in the inorder walk is the size of its left subtree.",
+        "Split both lists at the root: the preorder splits into as many values as the inorder's left part, and each half is the same problem again. A map from value to inorder position saves the repeated searching.",
+    ],
+    "g-letter-combinations": [
+        "Each digit contributes one letter, and the answer is the product of the digits' choices rather than a search through the string.",
+        "Grow the answer one digit at a time: replace the current list of prefixes with every prefix extended by each letter of the next digit. An empty string and a digit that is not a key both have no combinations at all.",
+    ],
+    "g-word-search": [
+        "The path is a walk, so each cell has to become unvisited again once you step back out of it.",
+        "Recurse from every matching starting cell, checking the cell, moving in four directions, and marking the cell visited while you are standing on it. Unmark on the way out, or a later path through the same cell is wrongly blocked.",
+    ],
+    "g-find-anagrams": [
+        "The window is always exactly the pattern's length, so only its position changes.",
+        "Count the pattern's letters, then slide a window of that length across the string updating the counts as you go and record every position where the counts match. Comparing 26 counters is constant work, which is what keeps the slide linear.",
+    ],
+    "g-min-height-trees": [
+        "The nodes that make the shortest trees are the ones in the middle of the longest path.",
+        "Repeatedly remove every leaf, layer by layer, until one or two nodes remain -- those are the centres. Removing leaves rather than measuring heights from every candidate is what makes it linear.",
+    ],
+    "g-task-scheduler": [
+        "The answer is decided by the most common task, and the rest of the tasks either fill the gaps or extend the schedule.",
+        "Lay the most frequent task out with gaps of the cooldown between its runs, then subtract those gaps from the total: the tasks that fit inside them cost nothing extra. When the remaining tasks are too many to fit, the schedule becomes simply the number of tasks.",
+    ],
+    "g-kth-smallest": [
+        "In a search tree the values come out in order from an in-order walk, so the kth smallest is the kth value that walk produces.",
+        "Walk the left spine with a stack, popping a node and stepping into its right subtree, and count as you pop. Stop at the kth value rather than collecting the whole walk, and treat a position below 1 as no answer.",
+    ],
+    "g-min-window-substring": [
+        "The window grows while it is missing something and shrinks while it is not.",
+        "Expand the right edge until the window holds every needed character, then advance the left edge as far as it can go while the window is still complete, recording the best run before each shrink. Count repeats: two b's need two b's, not one.",
+    ],
+    "g-ladder-length": [
+        "Every step changes exactly one letter, so a word's neighbours are found by trying all of its positions, not by comparing every pair of words.",
+        "Breadth-first from the start word, generating each neighbour by substituting a letter in each position and keeping only the ones in the allowed list. The start word and the end word both have to be in that list, and the length counted is the number of words rather than the number of steps.",
+    ],
+    "g-basic-calculator": [
+        "There is no multiplication and no precedence, so the expression can be read left to right as a running total -- the interest is in the brackets.",
+        "Keep a running total and a sign, and when an opening bracket arrives push the total and the sign and start a fresh one inside. A closing bracket pops the saved total and applies the saved sign to the value inside, which is also what makes a minus before a bracket work.",
+    ],
+    "g-max-profit-jobs": [
+        "Jobs are chosen by when they finish, so the order to sort by is the end time rather than the start.",
+        "Keep the best total up to each job in end-time order, and for each job find the last job that finishes before it starts and take the better of skipping and taking it. The search for that predecessor is the part worth making fast.",
+    ],
+    "g-merge-k-sorted": [
+        "Every row is individually sorted, so the next smallest value overall is always at the front of some row.",
+        "Keep one candidate per row in a heap, pop the smallest, and push the next value from the row it came from. With only two rows that is overkill, and with many rows it is the difference between a linear scan and a logarithmic one.",
+    ],
+    "g-largest-rectangle": [
+        "A rectangle's height is its shortest bar, so each bar really wants to know how far left and right the bars reach at least its own height.",
+        "Keep a stack of indices whose heights are increasing. A shorter bar arriving pops every taller one and settles each popped bar's width, since that is where its run of tall-enough bars ends; a final zero-height bar flushes the stack at the end.",
+    ],
+}

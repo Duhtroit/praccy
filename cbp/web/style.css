@@ -1,0 +1,2501 @@
+/* Praccy — a matte instrument for timed reps.
+ *
+ * The brief is an interview drill: you write code against a stopwatch and a
+ * grader tells you, without hedging, whether it was right. So the surface is
+ * an instrument's face rather than a page.
+ *
+ *   1. Petrol and brass. The greys are a dark blue-green -- the colour of
+ *      painted steel, not of a terminal -- and the one accent is brass, the
+ *      colour a needle is painted. Nothing here is violet, nothing is a
+ *      gradient, and nothing glows.
+ *   2. Colour is a verdict. Outside the brass controls, the only saturated
+ *      colour in the app appears when a run passes or fails. That is why the
+ *      hint is not coloured, why the source badges are muted, and why every
+ *      border is a hairline: so the green and the red are the loudest thing
+ *      on screen at the moment they arrive.
+ *   3. Squares and pills, not cards. Content surfaces take a 6px corner and
+ *      flat fills; only controls are round. One radius for everything is what
+ *      made the last pass read as a template.
+ *   4. Numbers are set in a heavier, tighter cut of the same face. The timer,
+ *      the ring, the level and the verdict are the instrument's readings, so
+ *      they get their own voice from weight and tracking rather than from a
+ *      second typeface.
+ *
+ * Motion is spring-based and answers an action, with one exception: a field of
+ * code drifts up behind the panes, slowly enough to read as a texture. Every
+ * other animation in this file is a response to something you did.
+ *
+ * The two appearances are two token blocks and an attribute on <html>. The
+ * script in the head of index.html writes it before the first paint, from the
+ * preference in localStorage or, failing that, from the system setting.
+ */
+
+/* Two bundled variable faces, and nothing that reaches the network.
+ *
+ * The point of shipping the files rather than naming system faces is that the
+ * app has to look identical on a Mac with no developer tools, on Windows where
+ * ui-rounded and SF Pro Rounded do not exist at all, and on Linux where they
+ * are equally absent. A stack built out of system names silently degrades
+ * into Helvetica/Arial/DejaVu, and the instrument's readings stop being
+ * readings. Both files are subset to latin, variable in weight, and served
+ * from the app's own loopback server, so first paint never waits on a CDN
+ * that is not there when you are offline.
+ *
+ * `font-display: swap` is deliberate: on a cold cache the fallback is used for
+ * one frame and then replaced, which is far better than a blank block of text
+ * while a local file is parsed. The fallbacks after each bundled name are
+ * ordered so that a machine which somehow lacks the file still gets the best
+ * face it actually has. */
+@font-face {
+  font-family: "Praccy Sans";
+  src: url("fonts/InterVariable.woff2") format("woff2-variations"),
+       url("fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Praccy Mono";
+  src: url("fonts/jbmono.woff2") format("woff2-variations"),
+       url("fonts/jbmono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Petrol. The dark greys carry blue and green rather than yellow, which is
+     what makes them read as painted steel -- and what stops the dark mode
+     landing on the near-black-plus-one-bright-accent that every tool ships. */
+  --canvas: #0e1618;
+  --surface: #131e21;
+  --surface-2: #1a282c;
+  --fill: #22343a;
+  --hairline: rgba(198, 231, 224, .09);
+  --hairline-strong: rgba(198, 231, 224, .20);
+
+  --label: #deeae6;
+  --label-2: rgba(222, 234, 230, .62);
+  --label-3: rgba(222, 234, 230, .38);
+
+  /* Brass. A light, warm accent on a dark ground always reads as an indicator
+     lamp rather than as tinted chrome, which is the whole idea. --accent is the
+     value used for text and hairlines; --accent-fill is the value used behind
+     text, and it is the darker one so the near-black label on it passes
+     contrast. There is no gradient anywhere in this file. */
+  --accent: #d9a441;
+  --accent-soft: rgba(217, 164, 65, .15);
+  --accent-fill: #c58f28;
+  --accent-fill-hover: #d9a441;
+  --on-accent: #101a1c;
+
+  /* The verdict colours, and the only saturated colour in the interface. */
+  --green: #6fbf8f;
+  --green-soft: rgba(111, 191, 143, .16);
+  --red: #e0796d;
+  --red-soft: rgba(224, 121, 109, .15);
+  --orange: #d9a441;
+  --orange-soft: rgba(217, 164, 65, .15);
+  --purple: #7fb6c9;
+  --purple-soft: rgba(127, 182, 201, .13);
+
+  /* Where a question came from. Two muted hues, used everywhere the source is
+     stated so the sidebar chip and the badge agree. Neither is the brass, so
+     neither competes with the controls. */
+  --src-coderbyte: #c79b6d;
+  --src-coderbyte-soft: rgba(199, 155, 109, .16);
+  --src-leetcode: #8fb2cd;
+  --src-leetcode-soft: rgba(143, 178, 205, .15);
+
+  /* A hint is help, so it gets a colour of its own -- a warm sand that reads
+     as a lit bulb rather than as another control. It is kept well away from
+     the verdict green and red, so a hint can never be mistaken for either. */
+  --hint: #e3b45f;
+  --hint-soft: rgba(227, 180, 95, .12);
+
+  --material: rgba(19, 30, 33, .82);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, .34), 0 10px 30px rgba(0, 0, 0, .28);
+  --shadow-pop: 0 2px 8px rgba(0, 0, 0, .40), 0 20px 56px rgba(0, 0, 0, .48);
+
+  --sans: "Praccy Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+  /* Readings, not prose. macOS used to get a rounded cut of the system face
+     here, which is why this token exists at all -- but ui-rounded and SF Pro
+     Rounded are Apple-only, so on Windows and Linux the readings quietly
+     became the same face as the body text. The distinction is now made the
+     portable way, in the weights and tracking below. */
+  --display: "Praccy Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+             Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Praccy Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo,
+          Consolas, "DejaVu Sans Mono", monospace;
+
+  /* The iOS/macOS sheet curve. Everything that moves uses this or a
+     faster sibling, which is what makes the motion read as native. */
+  --spring: cubic-bezier(.32, .72, 0, 1);
+  --quick: cubic-bezier(.4, 0, .2, 1);
+
+  --topbar-h: 56px;
+  --sidebar-w: 292px;
+
+  /* Two shapes, and the choice between them is meaningful: grouped content is
+     a squared surface, anything you press is a pill. Nothing in between. */
+  --radius-sm: 5px;
+  --radius: 6px;
+  --radius-lg: 11px;
+  --radius-pill: 999px;
+
+  /* A 1px highlight along the top edge of a raised surface. Real materials
+     catch light there; without it a soft-edged card reads as a flat shape. */
+  --edge-light: inset 0 1px 0 rgba(198, 231, 224, .05);
+  --well: rgba(0, 0, 0, .28);
+
+  /* The drifting code. Low enough that a glyph crossing a line of text changes
+     the ground by about one step of the label ramp and nothing more. */
+  --drift: rgba(222, 234, 230, .09);
+  --drift-key: rgba(217, 164, 65, .15);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Chalk, with the same blue-green cast as the petrol. Deliberately not a
+     warm paper: cream plus a mid-tone accent is the most recognisable
+     generated look there is. */
+  --canvas: #edf0ec;
+  --surface: #f7f9f6;
+  --surface-2: #e3e8e3;
+  --fill: #dbe1db;
+  --hairline: rgba(18, 32, 30, .12);
+  --hairline-strong: rgba(18, 32, 30, .22);
+
+  --label: #10201e;
+  --label-2: rgba(16, 32, 30, .66);
+  --label-3: rgba(16, 32, 30, .42);
+
+  /* Darkened so it can carry text on chalk; the filled control keeps the
+     dark-mode brass and its near-black label, so the button reads the same
+     in both modes. */
+  --accent: #7a570e;
+  --accent-soft: rgba(122, 87, 14, .11);
+  --accent-fill: #b8871f;
+  --accent-fill-hover: #c9971f;
+  --on-accent: #14191b;
+
+  --green: #2c7350;
+  --green-soft: rgba(44, 115, 80, .13);
+  --red: #a83b2c;
+  --red-soft: rgba(168, 59, 44, .10);
+  --orange: #7a570e;
+  --orange-soft: rgba(122, 87, 14, .11);
+  --purple: #2f6382;
+  --purple-soft: rgba(47, 99, 130, .10);
+
+  --src-coderbyte: #85521f;
+  --src-coderbyte-soft: rgba(133, 82, 31, .12);
+  --src-leetcode: #33607e;
+  --src-leetcode-soft: rgba(51, 96, 126, .11);
+
+  --hint: #8a6410;
+  --hint-soft: rgba(138, 100, 16, .10);
+
+  --material: rgba(247, 249, 246, .84);
+  --shadow-raised: 0 1px 2px rgba(18, 32, 30, .06), 0 10px 30px rgba(18, 32, 30, .07);
+  --shadow-pop: 0 2px 8px rgba(18, 32, 30, .08), 0 20px 56px rgba(18, 32, 30, .14);
+
+  --edge-light: inset 0 1px 0 rgba(255, 255, 255, .9);
+  /* A light-mode well is a scrim, not a black one. */
+  --well: rgba(18, 32, 30, .06);
+
+  /* Chalk takes less ink than petrol does, so the same alpha reads heavier
+     here; these are pulled back to match. */
+  --drift: rgba(16, 32, 30, .075);
+  --drift-key: rgba(122, 87, 14, .13);
+}
+
+* { box-sizing: border-box; }
+
+/* The `hidden` attribute is a UA `display: none`, so any author rule that
+   sets `display` silently beats it. Several elements here are flex while
+   being toggled with `hidden`, so make the attribute win outright. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--canvas);
+  color: var(--label);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* The panes are translucent materials, so they need something to sit on and a
+ * stacking context of their own. */
+.topbar, .layout { position: relative; z-index: 1; }
+
+h1, h2, h3 { text-wrap: balance; letter-spacing: -.022em; }
+p { text-wrap: pretty; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.icon {
+  width: 14px; height: 14px;
+  flex: none;
+  fill: none;
+  vertical-align: -.18em;
+}
+
+.skip-link {
+  position: absolute;
+  top: 8px; left: 8px;
+  z-index: 60;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  text-decoration: none;
+  font-weight: 600;
+  transform: translateY(-200%);
+  transition: transform .18s var(--quick);
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
+/* One focus treatment for everything. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── the ring ────────────────────────────────────────────────────
+ * The app's single memorable element. Track + fill, both transformed
+ * only, so the sweep stays on the compositor. */
+
+.ring { width: 26px; height: 26px; transform: rotate(-90deg); overflow: visible; }
+.ring-track { fill: none; stroke: var(--hairline-strong); stroke-width: 3; }
+.ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 94.25;
+  stroke-dashoffset: 94.25;
+  transition: stroke-dashoffset .62s var(--spring);
+}
+
+/* A solve lands here. The ring takes the hit so nothing else has to. */
+@keyframes ring-accept {
+  0%   { transform: rotate(-90deg) scale(1); }
+  38%  { transform: rotate(-90deg) scale(1.16); }
+  100% { transform: rotate(-90deg) scale(1); }
+}
+.ring-accept { animation: ring-accept .62s var(--spring); }
+
+/* ── top bar ──────────────────────────────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--topbar-h);
+  padding: 0 14px;
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
+  background: var(--material);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+
+/* The mark and the level badge are the two places the gradient is allowed to
+   appear in chrome, which keeps it meaning "this is your progress" rather than
+   "everything is shiny". */
+.brand-mark { width: 28px; height: 28px; flex: none; color: var(--accent); }
+.brand-plate { fill: var(--accent-soft); stroke: var(--hairline); }
+.brand-ring { opacity: .95; stroke: var(--accent); }
+.brand-name { font-weight: 620; letter-spacing: -.015em; }
+
+.brand-name {
+  font-weight: 590;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-controls { display: flex; align-items: center; gap: 12px; }
+
+/* Segmented control. The thumb slides between the two options rather than the
+ * button backgrounds swapping, which is the part that reads as native.
+ *
+ * The thumb used to be a 6px rectangle inside a pill-shaped track, at a size
+ * that no longer matched the padding around it, and it was filled with
+ * `--surface` -- darker than the track it sat in -- so the selected option
+ * looked like a hole rather than a highlight. It is a pill now, inset by the
+ * track's own padding, filled with the accent so "which view am I in" is the
+ * brightest thing in the control. */
+.segmented {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+}
+.segmented-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  height: calc(100% - 6px);
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .28);
+  transform: translate3d(var(--thumb-x, 0), 0, 0);
+  width: var(--thumb-w, 0);
+  transition: transform .34s var(--spring), width .34s var(--spring);
+}
+.segmented-btn {
+  position: relative;
+  z-index: 1;
+  min-width: 76px;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--label-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .2s var(--quick);
+}
+.segmented-btn:hover { color: var(--label); }
+/* Near-black on the brass, matching the primary button. */
+.segmented-btn.is-active { color: var(--on-accent); font-weight: 590; }
+
+.menu { display: flex; align-items: center; gap: 7px; }
+.menu-label { color: var(--label-2); font-size: 12px; }
+
+select {
+  appearance: none;
+  background-color: var(--fill);
+  color: var(--label);
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  padding: 5px 24px 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8274' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px;
+}
+
+.streak {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  color: var(--label-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: color .3s var(--quick), background-color .3s var(--quick);
+}
+.streak.lit { color: var(--orange); background: var(--orange-soft); }
+.streak-count { font-weight: 590; }
+@keyframes streak-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+.streak-pop { animation: streak-pop .5s var(--spring); }
+
+/* Level chip. Small and quiet by default; it is a status readout, not a
+   scoreboard, so it sits next to the streak rather than competing with the
+   progress ring. */
+.level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 11px 4px 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--label-3);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color .16s var(--quick);
+}
+.level:hover { background: var(--fill); }
+.level:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.level-badge {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-size: 11.5px;
+  font-weight: 620;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(50, 80, 112, .38);
+}
+/* The level bar. It was a 3px track in `--hairline`, which at 9% alpha on a
+   dark ground is not a quiet bar, it is no bar -- so the one place XP produced
+   something visible looked like empty space, and the whole scoreboard read as
+   decoration. A 4px track in `--fill` is legible at a glance and still not a
+   progress bar pretending to be a headline. */
+.level-bar {
+  width: 46px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.level-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width .5s var(--spring);
+}
+@keyframes level-up {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.13); }
+  100% { transform: scale(1); }
+}
+.level-up { animation: level-up .55s var(--spring); }
+.level-up .level-badge { background: var(--green); }
+
+/* The trophy count. Separate from the level on purpose: one is what you have
+   earned, the other is how far along you are, and a single chip carrying both
+   is how the XP total ended up meaning nothing.
+
+   It is the only thing in the topbar that is outlined, and the glyph is brass
+   from the start rather than from the first trophy. Both are for the same
+   reason: an unadorned number sitting at zero, in the grey a label uses, reads
+   as decoration, and nobody clicks decoration. The count taking on the accent
+   when there is something in the case is the second, quieter signal. */
+.trophy-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color .16s var(--quick), border-color .16s var(--quick),
+              color .16s var(--quick);
+}
+.trophy-chip .icon { width: 14px; height: 14px; }
+.trophy-chip:hover { background: var(--fill); border-color: var(--hairline-strong); }
+.trophy-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.trophy-chip.has-any { border-color: var(--accent-soft); background: var(--accent-soft); }
+.trophy-chip.is-complete { border-color: var(--accent); background: var(--accent-soft); }
+.trophy-count { color: var(--label-2); font-variant-numeric: tabular-nums; }
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--label-3);
+  cursor: pointer;
+  transition: background-color .16s var(--quick), color .16s var(--quick);
+}
+.icon-button:hover { background: var(--fill); color: var(--label); }
+.icon-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The two theme glyphs share one button and CSS picks between them, so the
+ * control is already right before any script runs. Each shows the appearance
+ * the press moves to. */
+.icon-button .icon { display: none; }
+.icon-button#sound-btn .icon,
+.icon-button#theme-btn .icon-sun { display: block; }
+:root[data-theme="light"] .icon-button#theme-btn .icon-sun { display: none; }
+:root[data-theme="light"] .icon-button#theme-btn .icon-moon { display: block; }
+
+/* Achievement sheet. A sheet rather than a dropdown because the list is
+   fourteen rows tall and there is no useful collapsed state. */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  z-index: 45;
+  max-height: 78vh;
+  overflow-y: auto;
+  margin: 0 auto;
+  max-width: 460px;
+  padding: 18px 20px max(22px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  background: var(--material);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-top: 1px solid var(--hairline);
+  box-shadow: var(--shadow-pop);
+  animation: sheet-up .32s var(--spring);
+}
+@keyframes sheet-up {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+/* Every panel leaves the way it arrived. Paired with sheet-up so opening and
+   closing read as one gesture rather than a rise and a cut. */
+@keyframes sheet-down {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(16px); opacity: 0; }
+}
+.sheet.is-closing { animation: sheet-down .3s var(--quick) forwards; }
+
+/* The sound panel's first row used to carry a rule across the panel just under
+   the header -- the one full-width line in a menu that already has a title and
+   a Done button to separate the two ends. */
+.sheet > .switch { border-top: 0; }
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sheet-head h2 { margin: 0; font-size: 15px; font-weight: 590; }
+.sheet-close {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.sheet-close:hover { background: var(--surface-2); }
+.sheet-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sheet-sub { margin: 4px 0 14px; color: var(--label-3); font-size: 12.5px; }
+
+.achievement-list { margin: 0; padding: 0; list-style: none; }
+.achievement {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  border-top: 1px solid var(--hairline);
+  color: var(--label-3);
+}
+.achievement:first-child { border-top: 0; }
+.achievement.earned { color: var(--label); }
+/* The mark is the trophy itself rather than a tick in a circle. A row that is
+   earned shows a brass trophy on a brass-washed disc and a row that is not
+   shows the same trophy in outline, so the count at the top and the list
+   underneath are telling you the same thing in the same symbol. */
+.achievement-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--label-3);
+}
+.achievement.earned .achievement-mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.achievement-mark .icon { width: 16px; height: 16px; }
+.achievement.earned .achievement-name { font-weight: 560; }
+.achievement-text { display: flex; flex-direction: column; min-width: 0; }
+.achievement-name { font-size: 13px; font-weight: 500; }
+.achievement-hint { color: var(--label-3); font-size: 11.5px; }
+
+/* ── the level block ──────────────────────────────────────────
+ * What XP is for, stated where there is room to state it. The header carries
+ * the badge and the bar; this carries the same two things plus the number, the
+ * name of the level and what the next one costs. */
+
+.level-block {
+  margin-bottom: 16px;
+  padding: 12px 14px 13px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.level-block-head { display: flex; align-items: center; gap: 9px; }
+.level-block-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 620;
+}
+.level-block-title { flex: 1; min-width: 0; color: var(--label); font-size: 13.5px; font-weight: 560; }
+.level-block-xp { color: var(--label-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.level-block-bar {
+  display: block;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.level-block-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width .5s var(--spring);
+}
+.level-block-next { margin: 8px 0 0; color: var(--label-3); font-size: 12px; }
+
+/* ── the sound switches ───────────────────────────────────────
+ * A real switch: a track with a thumb that travels, because that is what the
+ * shape means everywhere else on the machine and it costs three lines. */
+
+.setting-group { display: grid; }
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 11px 2px;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.setting-group .switch:first-child { border-top: 0; }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+.switch-text { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.switch-name { color: var(--label-2); font-size: 13px; }
+.switch-note { color: var(--label-3); font-size: 11.5px; }
+.switch[aria-checked="true"] .switch-name { color: var(--label); }
+.switch-track {
+  flex: none;
+  width: 38px;
+  height: 22px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+  transition: background-color .18s var(--quick);
+}
+.switch-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--label-3);
+  transition: transform .22s var(--spring), background-color .18s var(--quick);
+}
+.switch[aria-checked="true"] .switch-track { background: var(--accent-fill); }
+.switch[aria-checked="true"] .switch-thumb {
+  background: var(--on-accent);
+  transform: translateX(16px);
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 2px 4px;
+  border-top: 1px solid var(--hairline);
+}
+.volume .switch-name { flex: 1; }
+.volume input[type="range"] { flex: none; width: 132px; accent-color: var(--accent-fill); }
+
+/* The keyboard picker: a sub-setting of the Typing row rather than a fifth
+   entry in the list, so it is indented and carries no rule of its own. A
+   hairline above it would make it read as a sibling of the switches it sits
+   under, which is exactly the wrong relationship. A pill track, matching every
+   other either/or control in the app. */
+.pack { padding: 1px 2px 13px 16px; }
+.pack-options {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--well);
+}
+.pack-option {
+  padding: 5px 13px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--label-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color .16s var(--quick), color .16s var(--quick);
+}
+.pack-option:hover { color: var(--label-2); }
+.pack-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pack-option.is-active {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-weight: 560;
+}
+.pack-note {
+  margin: 8px 0 0;
+  color: var(--label-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.sheet-foot { margin: 14px 0 0; color: var(--label-3); font-size: 11.5px; line-height: 1.55; }
+
+.progress { display: flex; align-items: center; gap: 7px; flex: none; }
+.progress-label {
+  color: var(--label-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── layout ──────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: calc(100% - var(--topbar-h));
+}
+/* Learn hides the sidebar. Without collapsing the columns here the track
+   pane slides into the vacated sidebar column and renders 286px wide. */
+.layout.is-track { grid-template-columns: 1fr; }
+
+.pane {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+/* ── sidebar ─────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--canvas);
+  border-right: 1px solid var(--hairline);
+}
+
+.sidebar-filter { position: relative; padding: 10px 12px 8px; }
+
+/* Origin filter. A segmented row rather than a dropdown: there are three
+   states and they should all be visible at once, with the current one
+   obviously current. */
+.source-filter {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 2px;
+  background: var(--fill);
+  border-radius: 9px;
+}
+.source-chip {
+  flex: 1;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--label-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .16s var(--quick), color .16s var(--quick);
+}
+.source-chip:hover { color: var(--label-2); }
+/* Each source keeps one colour everywhere it is named: this chip when it is
+   the active filter, the row monogram, and the badge on the question. */
+.source-chip[data-source="Coderbyte"]:hover,
+.source-chip[data-source="LeetCode"]:hover { color: var(--label); }
+.source-chip[data-source="Coderbyte"].is-active {
+  background: var(--src-coderbyte-soft);
+  color: var(--src-coderbyte);
+}
+.source-chip[data-source="LeetCode"].is-active {
+  background: var(--src-leetcode-soft);
+  color: var(--src-leetcode);
+}
+.source-chip.is-active {
+  background: var(--surface-2);
+  color: var(--label);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .18);
+}
+.source-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.search-wrap { position: relative; }
+.search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--label-3);
+  pointer-events: none;
+}
+input[type="search"] {
+  width: 100%;
+  padding: 6px 10px 6px 30px;
+  /* The magnifier sits inside the field, not beside it. */
+  background-image: none;
+  background: var(--fill);
+  color: var(--label);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+/* `outline: none` is only ever paired with a stronger replacement here:
+   the field gets the same accent ring the editor shell uses. */
+input[type="search"]:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.question-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 8px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+/* Tier headings are plain labels in sentence case, not tracked-out
+ * caps: a heading that shouts on every section stops meaning anything. */
+.tier-heading {
+  padding: 16px 8px 5px;
+  font-size: 12px;
+  font-weight: 590;
+  color: var(--label-2);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.tier-heading .tier-count { color: var(--label-3); font-weight: 400; }
+.tier-stretch { color: var(--purple); }
+
+/* Origin monogram on each row. Deliberately a letter and not a word: the
+   sidebar is 286px and a column of "LeetCode" would eat it. */
+.qi-source {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .02em;
+}
+.qi-source-coderbyte { color: var(--src-coderbyte); background: var(--src-coderbyte-soft); }
+.qi-source-leetcode { color: var(--src-leetcode); background: var(--src-leetcode-soft); }
+
+.question-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--label-2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* `content-visibility: auto` was here to skip layout for off-screen rows.
+     It made every row's height depend on whether it had been scrolled past, so
+     the list reflowed under the reader and the scroll position could not
+     survive a rebuild. Every row is one line tall, so there was no layout to
+     save. */
+  transition: background-color .16s var(--quick), color .16s var(--quick);
+}
+.question-item:hover { background: var(--surface-2); color: var(--label); }
+/* Selection is a tint, not a fill. A saturated block on every selected row
+   is the tell of a web app pretending to be a native one. */
+.question-item.active {
+  background: var(--accent-soft);
+  color: var(--label);
+  font-weight: 500;
+}
+.question-item.active .qi-dot { border-color: var(--accent); }
+/* Selection must not swallow the attempted/solved signal. */
+.question-item.active .qi-dot.failed { border-color: var(--orange); }
+
+.qi-dot {
+  flex: none;
+  width: 15px; height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  color: var(--canvas);
+}
+.qi-dot .icon { width: 10px; height: 10px; }
+.qi-dot.solved { background: var(--green); border-color: var(--green); color: var(--canvas); }
+.qi-dot.failed { border-color: var(--orange); }
+
+@keyframes dot-fill {
+  0% { transform: scale(.5); opacity: .4; }
+  60% { transform: scale(1.16); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.qi-dot.just-solved { animation: dot-fill .5s var(--spring); }
+
+.qi-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── welcome ─────────────────────────────────────────────────── */
+
+.welcome {
+  max-width: 560px;
+  margin-inline: auto;
+  padding: 92px 40px 60px;
+}
+.welcome-count {
+  margin: 0 0 8px;
+  color: var(--label-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.welcome h1 { margin: 0 0 12px; font-size: 32px; font-weight: 680; letter-spacing: -.032em; }
+.welcome-sub { margin: 0 0 26px; color: var(--label-2); line-height: 1.6; max-width: 50ch; }
+.welcome-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 34px; }
+.welcome-sub code { font-family: var(--mono); font-size: 12.5px; color: var(--label); }
+.welcome-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--label-3);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.welcome-notes li { position: relative; padding-left: 16px; }
+.welcome-notes li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 10px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--hairline-strong);
+}
+
+/* ── question ────────────────────────────────────────────────── */
+
+/* The reading column is centred in whatever space the pane has. Without
+   margin-inline it sits hard against the sidebar, and on a wide window the
+   whole page reads as left-aligned rather than composed. The max-width still
+   governs how long a line gets, so this only moves the column. */
+.question { padding: 30px 34px 80px; max-width: 900px; margin-inline: auto; }
+
+.question-head { margin-bottom: 20px; }
+.question-position {
+  margin: 0 0 3px;
+  color: var(--label-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.question-head h1 {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 680;
+  letter-spacing: -.028em;
+}
+.question-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+  color: var(--label-2);
+  font-size: 12.5px;
+}
+.meta-sep { width: 1px; height: 11px; background: var(--hairline-strong); }
+.meta-item { display: inline-flex; align-items: center; }
+.meta-stretch { color: var(--purple); }
+.meta-best { color: var(--green); font-variant-numeric: tabular-nums; }
+
+/* The clock. Tabular numerals so the digits never reflow, and a
+ * hairline-coloured idle state so "not started yet" is visibly
+ * different from "finished at zero". */
+.meta-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+  min-width: 62px;
+  transition: color .3s var(--quick);
+}
+.meta-timer.running { color: var(--green); }
+.meta-timer.stopped { color: var(--label); }
+.meta-timer.running .icon { animation: tick 1s steps(1, end) infinite; }
+@keyframes tick { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .45; } }
+
+/* Where the question came from. A tinted chip rather than a word, in the same
+ * hue the sidebar filter chip and the list monogram use for that source. */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+}
+.source-badge.is-coderbyte { color: var(--src-coderbyte); background: var(--src-coderbyte-soft); }
+.source-badge.is-leetcode { color: var(--src-leetcode); background: var(--src-leetcode-soft); }
+
+.prompt {
+  margin: 0 0 20px;
+  max-width: 68ch;
+  color: var(--label);
+  line-height: 1.68;
+  /* Prompts carry blank-line paragraph breaks. Without this they collapse to
+     single spaces, which was hiding every break in the question text. */
+  white-space: pre-wrap;
+}
+
+.contract {
+  margin-bottom: 18px;
+  padding: 2px 15px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+.contract-row {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding: 8px 0;
+}
+.contract-row + .contract-row { border-top: 1px solid var(--hairline); }
+.contract-key { color: var(--label-3); font-size: 12px; min-width: 92px; flex: none; }
+.contract code { font-family: var(--mono); font-size: 12.5px; color: var(--label); }
+
+/* The return-type note. It used to be a tinted amber panel, which made it the
+   same colour as the primary button and the loudest thing on the page. That
+   broke the rule the rest of the interface follows -- outside the brass
+   controls, colour means a verdict -- and it made a note competing with Submit
+   for the eye. It is a plain surface with a rule down its edge now, and the
+   text is full contrast, so it is still the first thing you notice on the way
+   in without borrowing the accent to say so. */
+.note {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--label);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── details: one treatment for every disclosure ─────────────── */
+
+details { margin-bottom: 18px; }
+summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  touch-action: manipulation;
+  transition: color .16s var(--quick);
+}
+summary::-webkit-details-marker { display: none; }
+summary:hover { color: var(--label); }
+summary .icon { color: var(--label-3); transition: transform .26s var(--spring); }
+details[open] > summary .icon { transform: rotate(90deg); }
+
+/* Examples. Always open: the whole point of the tool is that the return
+ * type is part of the question, and a table you have to remember to expand is
+ * a table that gets skipped. A Hide button keeps it out of the way when you
+ * have already internalised the shape. */
+.examples {
+  margin: 0 0 22px;
+  padding: 0 15px 10px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+/* The header *is* the button, and it reaches the card's edges. A full-width row
+   that only answers in its last 54px is a target you have to aim at, and the
+   row is the thing that looks pressable. The negative margin cancels the
+   card's own padding so the hover fill reaches both edges; `overflow: hidden`
+   on the card is what keeps the fill inside the rounded corner. */
+.examples-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: calc(100% + 30px);
+  margin: 0 -15px 8px;
+  padding: 11px 15px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .14s var(--quick);
+}
+.examples-head:hover { background: var(--fill); }
+.examples-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.examples-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--label-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+/* The state word and the chevron are a courtesy, not the target: the whole row
+   already does the thing. The chevron follows the module rule for the same
+   action -- right when closed, down when open -- so one gesture looks the same
+   everywhere in the app. */
+.examples-state {
+  flex: none;
+  color: var(--label-3);
+  font-size: 11.5px;
+}
+.examples-chevron { display: grid; place-items: center; flex: none; color: var(--label-3); }
+.examples-chevron .icon { width: 11px; height: 11px; transition: transform .26s var(--spring); }
+.examples-head[aria-expanded="true"] .examples-chevron .icon { transform: rotate(90deg); }
+/* A collapsed card must not keep the space the list had, or the strip below
+   the header reads as an empty list rather than as nothing. */
+.examples.is-collapsed { padding-bottom: 0; }
+.examples.is-collapsed .examples-head { margin-bottom: 0; }
+
+/* One card per case, input above output. Side by side was a three-column
+   table, and the two long mono strings fought for the same 60 characters. */
+.example-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: example;
+}
+.example {
+  counter-increment: example;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+}
+.example:first-child { border-top: 0; padding-top: 2px; }
+.example-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.example-num {
+  color: var(--label-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.example-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
+}
+.example-io {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.example-key { color: var(--label-3); font-family: var(--sans); font-size: 11.5px; }
+.example-val { color: var(--label); overflow-wrap: anywhere; }
+.example-out { color: var(--green); }
+.example-type {
+  margin-left: 8px;
+  color: var(--label-3);
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: .03em;
+}
+
+@media (max-width: 620px) {
+  .example-io { grid-template-columns: 1fr; gap: 2px; }
+  .example-key { margin-top: 4px; }
+}
+
+.examples-table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.examples-table th {
+  text-align: left;
+  padding: 6px 20px 6px 0;
+  color: var(--label-3);
+  font-weight: 500;
+  border-bottom: 1px solid var(--hairline);
+}
+.examples-table td {
+  padding: 7px 20px 7px 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.examples-table td:last-child { color: var(--label-3); }
+
+/* ── editor ──────────────────────────────────────────────────── */
+
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+.editor-label { color: var(--label-2); font-size: 12.5px; }
+.editor-actions { display: flex; gap: 4px; }
+
+.editor-shell {
+  display: flex;
+  border-radius: var(--radius);
+  background: var(--fill);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+  transition: border-color .2s var(--quick), box-shadow .2s var(--quick);
+}
+.editor-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.gutter {
+  flex: none;
+  padding: 13px 10px 13px 13px;
+  min-width: 40px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--label-3);
+  background: var(--canvas);
+  border-right: 1px solid var(--hairline);
+  user-select: none;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.editor {
+  flex: 1;
+  min-height: 280px;
+  padding: 13px 15px;
+  border: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--label);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.editor:focus { outline: none; }
+
+.submit-row { display: flex; align-items: center; gap: 14px; margin-top: 15px; }
+.submit-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--label-3);
+  font-size: 12px;
+}
+kbd {
+  font-family: var(--sans);
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 4px;
+}
+
+/* ── buttons ─────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--label);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--edge-light);
+  /* The press is the feedback. It answers the finger, so it is springy
+     on the way back and instant on the way in. */
+  transition: transform .18s var(--spring), background-color .16s var(--quick),
+              opacity .16s var(--quick), box-shadow .16s var(--quick);
+}
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* Brass with a near-black label. That inversion -- a light fill under dark
+   text -- is what makes the control read as a painted switch rather than as
+   another tinted button, and it keeps the contrast high in both colour
+   schemes without a second token. */
+.btn-primary {
+  background: var(--accent-fill);
+  border-color: transparent;
+  color: var(--on-accent);
+  font-weight: 600;
+  padding: 8px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 6px 18px rgba(0, 0, 0, .28);
+}
+.btn-primary:hover { background: var(--accent-fill-hover); box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 8px 24px rgba(0, 0, 0, .34); }
+.btn-primary:active { box-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 3px 10px rgba(0, 0, 0, .26); }
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--label-2);
+  font-size: 12.5px;
+  padding: 5px 10px;
+}
+.btn-ghost:hover { background: var(--surface-2); color: var(--label); }
+.btn-ghost .icon { color: var(--label-3); }
+.btn-ghost:hover .icon { color: var(--label-2); }
+
+/* ── results ─────────────────────────────────────────────────── */
+
+.result { margin-top: 22px; }
+
+@keyframes result-in {
+  from { opacity: 0; transform: translateY(-8px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
+.result:not([hidden]) { animation: result-in .42s var(--spring); }
+
+.result-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 16px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-weight: 590;
+  font-size: 13.5px;
+}
+.result-head .icon { width: 16px; height: 16px; }
+.result-head .head-time {
+  margin-left: auto;
+  color: inherit;
+  opacity: .65;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.result.pass .result-head { background: var(--green-soft); color: var(--green); }
+.result.fail .result-head,
+.result.error .result-head { background: var(--red-soft); color: var(--red); }
+
+@keyframes verdict-pop {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.result.pass .result-head .icon { animation: verdict-pop .46s var(--spring) .08s backwards; }
+
+.case-list {
+  border: 1px solid var(--hairline);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+.case {
+  padding: 11px 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.case + .case { border-top: 1px solid var(--hairline); }
+.case.pass .case-verdict { color: var(--green); }
+.case.fail .case-verdict { color: var(--red); }
+/* A wash rather than the full tint: the verdict is in the header, and six
+   failed rows at full strength turned the whole page red and said the same
+   thing six times. */
+.case.fail { background: color-mix(in srgb, var(--red) 7%, transparent); }
+
+.case-line { display: flex; gap: 12px; }
+.case-label { color: var(--label-3); min-width: 72px; flex: none; }
+.case-value { min-width: 0; color: var(--label); word-break: break-word; }
+.case-value.expected { color: var(--label-2); }
+.case-value.actual-fail { color: var(--red); }
+
+.case-verdict { display: inline-flex; align-items: center; gap: 6px; font-weight: 590; }
+.case-verdict .icon { width: 12px; height: 12px; }
+
+.case-detail { margin-top: 8px; padding-left: 84px; color: var(--red); font-family: var(--sans); font-size: 12.5px; }
+.case-advice { margin-top: 3px; padding-left: 84px; color: var(--label-2); font-family: var(--sans); font-size: 12.5px; }
+@media (max-width: 620px) {
+  .case-detail, .case-advice { padding-left: 0; }
+}
+
+.error-log {
+  padding: 13px 16px;
+  border: 1px solid var(--hairline);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--red-soft);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--red);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  max-height: 280px;
+  overflow: auto;
+}
+
+/* ── lesson & solution ───────────────────────────────────────── */
+
+.lesson {
+  margin-top: 20px;
+  padding: 15px 17px;
+  max-width: 74ch;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--label-2);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.solution { margin-top: 20px; }
+.solution pre {
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  background: var(--fill);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--label);
+}
+
+/* ── hint ──────────────────────────────────────────────────────
+ * Every question carries two or three hints, written for it, revealed one at a
+ * time. They escalate: the first names what the input is really asking about,
+ * the second names the technique, and neither shows code.
+ *
+ * The trigger is a pill in the editor's own row, beside Reset, and the hints
+ * it reveals land directly above the answer -- help you have to scroll to find
+ * is help you do not use. The colour is the hint's own: a warm sand, the colour
+ * of the bulb on the button, kept well away from the verdict green and red so
+ * a hint can never read as either. */
+
+.hint { margin: 0 0 12px; }
+
+.hint-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--hint);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color .14s var(--quick), color .14s var(--quick),
+              border-color .14s var(--quick);
+}
+.hint-ask .icon { width: 13px; height: 13px; color: var(--hint); }
+/* Stated next to the trigger before you spend one: how much help is left. */
+.hint-ask .hint-count {
+  color: var(--label-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.hint-ask:hover { background: var(--hint-soft); border-color: var(--hint); }
+.hint-ask:active { transform: scale(.97); }
+.hint-ask:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint-ask:disabled { color: var(--label-3); cursor: default; }
+.hint-ask:disabled .icon { color: var(--label-3); }
+.hint-ask:disabled:hover { background: transparent; border-color: var(--hairline); }
+
+.hint-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hint-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  max-width: 74ch;
+  padding: 9px 13px;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--hint);
+  border-radius: var(--radius);
+  background: var(--hint-soft);
+  color: var(--label);
+  font-size: 13px;
+  line-height: 1.62;
+  overflow: hidden;
+}
+.hint-num {
+  color: var(--hint);
+  font-family: var(--display);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.hint-text code {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--fill);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--label);
+}
+/* Only the hint that was just asked for moves, so a second one does not
+   arrive silently while you are reading the first. The sweep of light is the
+   swipe that revealed it -- one pass, then gone. */
+.hint-item.is-new { animation: hint-in .46s var(--spring); }
+.hint-item.is-new::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 55%;
+  background: linear-gradient(100deg, transparent, var(--accent-soft), transparent);
+  transform: translateX(-120%);
+  animation: hint-sheen .8s var(--quick) forwards;
+  pointer-events: none;
+}
+@keyframes hint-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes hint-sheen {
+  to { transform: translateX(240%); opacity: 0; }
+}
+
+/* ── patterns ──────────────────────────────────────────────────
+ * The techniques and topics a question uses. The words name the shape of the
+ * answer -- "sliding window" is most of a sliding-window problem -- so the row
+ * sits below everything else on the page rather than under the title, where it
+ * used to spoil the question before you had read it.
+ *
+ * A pattern the course teaches links to the module that teaches it. The
+ * generic ones ("Algorithm", "Math Fundamentals") have no module to point at
+ * and stay as plain chips, which is also how the two kinds are told apart: the
+ * linked ones are brighter and carry a chevron, so the row reads as a ranking
+ * rather than as a wall of equal tags. */
+
+.patterns { position: relative; margin-top: 22px; }
+.patterns-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  padding: 4px 12px 4px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--label-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .14s var(--quick), border-color .14s var(--quick),
+              color .14s var(--quick);
+}
+.patterns-label .icon { width: 13px; height: 13px; color: var(--hint); }
+.patterns-label:hover { background: var(--surface-2); border-color: var(--hairline-strong); color: var(--label); }
+.patterns-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.patterns-hint { color: var(--label-3); font-size: 11.5px; font-weight: 500; }
+.patterns.is-revealed .patterns-hint { color: var(--hint); }
+
+/* The chips are covered until they are asked for. Blurred rather than hidden:
+   the shape of the row still shows, so it reads as something withheld rather
+   than as nothing at all, and the words underneath cannot be read through it.
+   The row is inert while covered, so the click that uncovers it is the only
+   thing a press can do. */
+.pattern-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: filter .5s var(--quick), opacity .5s var(--quick);
+}
+.patterns:not(.is-revealed) .pattern-list {
+  filter: blur(6px);
+  opacity: .45;
+  pointer-events: none;
+  user-select: none;
+}
+/* One sweep of light across the row as the cover comes off. */
+.patterns::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(100deg, transparent 35%, var(--accent-soft) 50%, transparent 65%);
+  background-size: 200% 100%;
+  background-position: -100% 0;
+}
+.patterns.is-shining::after { animation: pattern-shine .9s var(--quick); }
+@keyframes pattern-shine {
+  0%   { opacity: 0; background-position: -100% 0; }
+  35%  { opacity: .9; }
+  100% { opacity: 0; background-position: 200% 0; }
+}
+.pattern {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--label-3);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+}
+.pattern.is-linked {
+  border-color: var(--hairline-strong);
+  color: var(--label);
+  cursor: pointer;
+  transition: background-color .14s var(--quick), border-color .14s var(--quick);
+}
+.pattern.is-linked:hover { background: var(--surface-2); border-color: var(--accent); }
+.pattern.is-linked:active { transform: scale(.98); }
+.pattern.is-linked:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pattern .icon { width: 10px; height: 10px; color: var(--label-3); }
+.pattern.is-linked:hover .icon { color: var(--accent); }
+
+/* A module that a pattern chip just opened. Two pulses of the brass edge, so
+   following a link lands somewhere you can see rather than somewhere above
+   the fold. */
+.module.is-flashing { animation: module-flash 1.5s var(--quick); }
+@keyframes module-flash {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  25%      { box-shadow: 0 0 0 3px var(--accent-soft); }
+  60%      { box-shadow: 0 0 0 3px var(--accent-soft); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .module.is-flashing { animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+}
+
+.pane-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ── view switch (Learn) ─────────────────────────────────────── */
+
+.track-pane { padding: 30px 34px 80px; max-width: 840px; margin-inline: auto; }
+.track-head { margin-bottom: 28px; }
+.track-head h1 { margin: 0 0 7px; font-size: 27px; font-weight: 680; letter-spacing: -.028em; }
+.track-head p { margin: 0; color: var(--label-2); max-width: 60ch; }
+.track-meta { display: flex; gap: 16px; margin-top: 11px; color: var(--label-3); font-size: 12.5px; }
+.track-meta b { color: var(--label-2); font-weight: 590; font-variant-numeric: tabular-nums; }
+
+.track-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.track-progress-fill {
+  height: 100%;
+  background: var(--green);
+  transform-origin: left center;
+  transition: width .5s var(--spring);
+}
+
+/* Modules are rows in a list, not cards in a grid. Hairlines carry the
+ * grouping; that is what makes a long document scannable. */
+.module { border-bottom: 1px solid var(--hairline); }
+.module summary { padding: 16px 4px; gap: 13px; }
+.module-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 23px; height: 23px;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--label-2);
+  font-size: 11px;
+  font-weight: 590;
+  font-variant-numeric: tabular-nums;
+  transition: background-color .3s var(--quick), color .3s var(--quick);
+}
+.module.done .module-num { background: var(--green); color: var(--canvas); }
+.module-num .icon { width: 11px; height: 11px; }
+
+.module-title { flex: 1; min-width: 0; font-weight: 500; color: var(--label); }
+.module.done .module-title { color: var(--label-2); }
+.module-sub { display: block; margin-top: 2px; color: var(--label-3); font-size: 12.5px; font-weight: 400; }
+.module-mins { color: var(--label-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+/* No rotation here: the shared `summary .icon` rule already turns the
+   chevron, and rotating both would spin it 180 degrees. */
+.module-chevron { color: var(--label-3); }
+
+.module-body { padding: 2px 4px 26px 36px; }
+
+.principle { padding: 16px 0; border-top: 1px solid var(--hairline); }
+/* h2, not h3: modules are disclosure groups rather than outline sections,
+   so heading straight from the view's h1 avoids skipping a level. */
+/* Three steps, and they have to stay three steps: the heading, the claim, and
+   the argument. At 15px the heading sat level with the lead paragraph and the
+   principle read as one undifferentiated block, which is what the old single
+   <p> did as well. */
+.principle h2 {
+  margin: 0 0 11px;
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -.016em;
+  color: var(--label);
+}
+
+/* ── the course prose ─────────────────────────────────────────
+ * The opening paragraph of a principle is the claim and the rest is the
+ * argument for it, so the claim is set brighter and a little larger: a
+ * principle then has a shape you can take in before you read it, and the
+ * paragraphs after it step down instead of all arriving at one pitch.
+ *
+ * Blocks carry a bottom margin rather than a margin collapsing between
+ * siblings, because the order of blocks is decided by the author of the text
+ * and the spacing should not depend on which two land next to each other. */
+.prose-body { max-width: 66ch; }
+.prose-body > *:last-child { margin-bottom: 0; }
+.prose-body .prose {
+  margin: 0 0 10px;
+  color: var(--label-2);
+  font-size: 13.5px;
+  line-height: 1.68;
+}
+.prose-body .prose-lead {
+  color: var(--label);
+  font-size: 14.5px;
+  line-height: 1.58;
+}
+/* Emphasis goes brighter rather than heavier alone. At 13.5px on a dark ground
+   weight on its own barely registers, and the word a sentence is about is the
+   word the eye should land on. */
+.prose-body strong { color: var(--label); font-weight: 620; }
+.prose-body .prose code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--well);
+  color: var(--label);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+/* A specimen. It is the one kind of course content that is not prose and must
+   not be read as prose, so it is the one thing in the body with a boundary
+   around it. It scrolls sideways rather than wrapping: a wrapped line of code
+   has stopped being a line of code. */
+.prose-body .prose-code {
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: var(--well);
+  color: var(--label-2);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+.prose-body .prose-code code {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+.prose-body .prose-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--label-2);
+  font-size: 13.5px;
+  line-height: 1.68;
+}
+.prose-body .prose-list li { margin-bottom: 5px; }
+
+/* The self-check: a question to ask yourself, not a warning. It takes a rule
+ * down its left edge and a well behind it rather than a tint, because the
+ * course is colourless on purpose -- the only saturated colour in the app is a
+ * verdict, and passing your own reading is not one. The text is the brightest
+ * thing in the principle, because it is the part worth remembering. */
+.principle-check {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--hairline-strong);
+  background: var(--well);
+  color: var(--label);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.principle-check .icon { flex: none; color: var(--label-3); margin-top: 2px; }
+
+/* ── progressive reveal ─────────────────────────────────────────
+ * A principle arrives one beat at a time. The control carries how many beats
+ * are still folded, because a reader deciding whether to keep going is owed
+ * the size of what is left; without that number the only signal is the length
+ * of the wall, which is what made the course feel like reading.
+ *
+ * The control is a row rather than a button in a sentence, so it reads as a
+ * handle on the thing below it rather than as more prose. It is the one
+ * saturated-free element in the principle that invites a click, which is why
+ * it takes the brass: the accent elsewhere is for controls, and this is one.
+ */
+.beat + .beat { margin-top: 12px; }
+.beat[hidden] { display: none; }
+.beat-caption { margin-bottom: 10px; }
+.beat-caption > *:last-child { margin-bottom: 0; }
+
+@keyframes beat-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+.beat.is-open { animation: beat-in .34s var(--spring); }
+
+.beat-more {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 7px 12px 7px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--label-2);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background .16s var(--quick), color .16s var(--quick),
+              border-color .16s var(--quick), transform .12s var(--quick);
+}
+.beat-more:hover {
+  background: var(--surface-2);
+  color: var(--label);
+  border-color: var(--hairline-strong, var(--hairline));
+}
+.beat-more:active { transform: scale(.985); }
+.beat-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A small brass rule rather than a chevron glyph: it says "there is more
+   below" without adding another icon to a set that already has six. */
+.beat-more::before {
+  content: "";
+  width: 2px;
+  height: 13px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: .75;
+}
+.beat-more-count {
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── walkthrough ────────────────────────────────────────────────
+ * The specimen stays whole and one line is picked out of it. Dimming rather
+ * than revealing in order is the point: the finished block is what the reader
+ * is learning to recognise, so hiding it would remove the thing being taught.
+ *
+ * The gutter is a real button, not a decoration on a <pre>, so the code is
+ * navigable by keyboard and the active line is announced rather than only
+ * being shown. Line height is pinned so a jump between lines does not move
+ * the block under the pointer.
+ */
+.walkthrough {
+  margin: 10px 0 2px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--well);
+  overflow: hidden;
+}
+.walk-code {
+  padding: 7px 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.62;
+}
+.walk-line {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 0 14px 0 0;
+  border: 0;
+  background: none;
+  color: var(--label-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s var(--quick), color .18s var(--quick);
+}
+.walk-line:hover { background: var(--surface-2); color: var(--label); }
+.walk-line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.walk-gutter {
+  flex: none;
+  width: 34px;
+  padding-right: 10px;
+  color: var(--label-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: .5;
+  transition: opacity .18s var(--quick), color .18s var(--quick);
+  user-select: none;
+}
+.walk-text { white-space: pre; overflow-x: auto; }
+/* The active line takes brass on a wash of it, which is the same treatment
+   the hint uses: a line that is being pointed at, not a verdict. */
+.walk-line.is-at {
+  background: var(--accent-soft);
+  color: var(--label);
+}
+.walk-line.is-at .walk-gutter { color: var(--accent); opacity: 1; }
+
+@keyframes walk-step {
+  from { background: rgba(217, 164, 65, .3); }
+  to { background: var(--accent-soft); }
+}
+.walk-line.is-at { animation: walk-step .5s var(--spring); }
+
+.walk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--hairline);
+  color: var(--label-3);
+  font-size: 11.5px;
+}
+.walk-count { font-variant-numeric: tabular-nums; }
+.walk-count b { color: var(--label-2); font-weight: 600; }
+.walk-note { font-style: normal; }
+
+/* Part headings. The course has two halves and they are different kinds of
+ * thing, so each gets a name and a stated length rather than running together
+ * as one list. */
+.track-part { margin-top: 34px; }
+.track-part:first-of-type { margin-top: 26px; }
+.part-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--hairline);
+}
+.part-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 620;
+  letter-spacing: -.012em;
+  color: var(--label);
+}
+.part-meta {
+  display: flex;
+  gap: 10px;
+  color: var(--label-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.part-blurb {
+  margin: 9px 0 4px;
+  max-width: 68ch;
+  color: var(--label-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* "Used by" cross-references. Quieter than the module's drill list on
+   purpose: these are a lookup, not a task. A solved question keeps its
+   green dot so a chip doubles as a progress marker. */
+.principle-uses { margin-top: 13px; }
+.principle-uses-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--label-3);
+  font-size: 12px;
+}
+.principle-uses-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.use-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--label-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.use-chip:hover { background: var(--surface-2); color: var(--label); border-color: var(--hairline-strong, var(--hairline)); }
+.use-chip:active { transform: scale(.97); }
+.use-chip .qi-dot { width: 11px; height: 11px; border-width: 1.3px; }
+.use-chip .qi-dot.solved { width: 11px; height: 11px; }
+.use-chip:disabled { cursor: default; }
+
+.drills { margin-top: 20px; }
+.drills-label { color: var(--label-2); font-size: 12.5px; font-weight: 500; margin-bottom: 9px; }
+.drill-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.drill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--label-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .16s var(--quick), color .16s var(--quick),
+              transform .18s var(--spring);
+}
+.drill:hover { background: var(--surface-2); color: var(--label); }
+.drill:active { transform: scale(.97); }
+.drill .qi-dot { width: 13px; height: 13px; border-width: 1.4px; }
+.drill .qi-dot .icon { width: 8px; height: 8px; }
+
+/* ── toast ───────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 50;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--material);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-pop);
+  color: var(--label);
+  font-size: 13px;
+  text-align: center;
+  transform: translate(-50%, 0);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 14px) scale(.96); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.toast:not([hidden]) { animation: toast-in .4s var(--spring); }
+
+.running { opacity: .6; pointer-events: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  border: 1.6px solid var(--hairline-strong);
+  border-top-color: var(--label);
+  animation: spin .7s linear infinite;
+}
+
+/* ── responsive ──────────────────────────────────────────────── */
+
+/* ── readings ───────────────────────────────────────────────────
+ * Everything that is a measurement rather than prose -- the stopwatch, the
+ * ring's percentage, the level, the per-section counts, the verdict -- is set
+ * in the display cut with tabular figures, a heavier weight and slightly
+ * negative tracking. It is the instrument's own voice: the digits stop
+ * shifting as they count, and the readings read as measurements rather than as
+ * sentences. The distinction is weight and tracking rather than a second
+ * typeface, which is what lets the same rule work on a machine that has never
+ * heard of ui-rounded.
+ */
+
+.meta-timer,
+.progress-label,
+.question-position,
+.example-num,
+.part-meta,
+.module-num,
+.module-mins,
+.module-progress-count,
+.section-progress-percent,
+.result-head,
+.level-badge,
+.level-block-badge,
+.level-block-xp,
+.trophy-count,
+.streak-count,
+.hint-num {
+  font-family: var(--display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  letter-spacing: -.015em;
+}
+/* The two readings large enough for the weight to change the shape of the
+   numeral get it harder still, and the ring percentage loses tracking
+   entirely so a long countdown stays centred in its own box. */
+.meta-timer {
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+
+@media (max-width: 900px) {
+  :root { --sidebar-w: 240px; }
+  .brand-name { display: none; }
+  .progress-label { display: none; }
+}
+
+@media (max-width: 760px) {
+  .layout, .layout.is-track { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .question, .track-pane { padding: 22px 18px 60px; }
+  .welcome { padding: 56px 20px 40px; }
+  .welcome h1 { font-size: 25px; }
+  .menu-label { display: none; }
+  .module-body { padding-left: 4px; }
+}
+
+/* The header is a single row of controls, so it has a real width budget.
+   Below these sizes it starts pushing the page wider than the viewport. */
+@media (max-width: 560px) {
+  .topbar-controls { gap: 8px; }
+  .segmented-btn { min-width: 58px; padding: 5px 9px; font-size: 12.5px; }
+  select { max-width: 92px; padding: 5px 20px 5px 8px; }
+  .progress .ring, .ring { width: 22px; height: 22px; }
+  .streak { padding: 4px 7px 4px 5px; }
+}
+
+/* The trophy count is the one reading that never gets hidden -- it is what the
+   header is for now -- so the level bar is what gives up the space first. */
+@media (max-width: 620px) {
+  .level-bar { display: none; }
+  .level { padding: 4px 5px; }
+}
+
+@media (max-width: 460px) {
+  /* The mark is the first thing to go: the ring already carries the
+     progress, and the name is not what anyone is here to read. */
+  .brand { display: none; }
+}
+
+/* ── course section progress ────────────────────────────────────
+ * A ring per section and a bar per module, both measured by how many of the
+ * questions that section touches have been solved. The ring is the app's
+ * progress mark scaled up, so "how am I doing" reads the same everywhere. */
+
+.part-head { align-items: center; }
+.part-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+/* The ring and its label sit together as one unit: a bare circle floating
+ * beside a heading reads as decoration, and putting the number inside it made
+ * the arc too small to see. Beside it, the ring can be a clean sweep and the
+ * label can say what the number means. */
+.section-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+/* The circle gets its own well behind the arc, so the ring reads as a dial set
+ * into the pill rather than a line drawn on top of it. The well is a
+ * translucent scrim rather than a surface token: the same rule then holds over
+ * the plain pill and over the green "complete" pill without a second colour. */
+.section-ring {
+  flex: none;
+  width: 30px; height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.section-progress.complete .section-ring { background: var(--well); box-shadow: none; }
+.section-ring svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+  display: block;
+}
+.section-ring-track {
+  fill: none;
+  stroke: var(--hairline-strong);
+  stroke-width: 3.4;
+}
+.section-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .7s var(--spring);
+}
+.section-progress-label {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+.section-progress-percent {
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.section-progress-pct { font-size: 9.5px; color: var(--label-3); margin-left: 1px; }
+/* One reading, and the word says what it is. The quieter type is deliberate:
+   the number is the measurement and the word is only its unit. */
+.section-progress-word { color: var(--label-3); font-size: 12px; }
+.section-progress.complete { background: var(--green-soft); border-color: transparent; }
+.section-progress.complete .section-ring-fill { stroke: var(--green); }
+.section-progress.complete .section-progress-percent { color: var(--green); }
+.section-progress.complete .section-progress-word { color: var(--green); }
+
+.module-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+.module-progress-bar {
+  width: 54px; height: 4px;
+  border-radius: 2px;
+  background: var(--hairline-strong);
+  overflow: hidden;
+}
+.module-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width .6s var(--spring);
+}
+.module-progress-fill.complete { background: var(--green); }
+.module-progress-count {
+  color: var(--label-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 26px;
+  text-align: right;
+}
+
+/* ── celebration burst ──────────────────────────────────────────
+ * Shards fly out from the result box on a pass. Transform-only so the whole
+ * thing stays on the compositor, and removed from the DOM by JS when it ends. */
+
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fx-shard {
+  position: absolute;
+  width: 8px; height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 2px;
+  will-change: transform, opacity;
+  animation: fx-fly .72s var(--quick) forwards;
+}
+@keyframes fx-fly {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(.2) rotate(220deg); opacity: 0; }
+}
+
+/* ── feedback motion ────────────────────────────────────────────
+ * A miss shakes once; a hit is the burst above. The shake is short and
+ * small on purpose -- enough to register, not enough to be annoying when a
+ * wrong answer is the normal state of practice. */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+.result.shake { animation: shake .42s var(--quick); }
+
+@keyframes question-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.question-in { animation: question-in .26s var(--quick); }
+
+/* Entering a view. The course pane had no entrance while the practice pane
+   did, so switching to it was a jump cut. */
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.view-in { animation: view-in .3s var(--quick); }
+
+/* ── drifting code ──────────────────────────────────────────────
+ * A field of code tokens rising behind the panes. It is the one animation in
+ * the app that is not answering something you did, so it is built to be
+ * missed rather than watched: a token takes well over a minute to cross the
+ * window, the colour sits at the bottom of the label ramp, and the opacity
+ * fades at both ends so a token arriving or leaving is not an event.
+ *
+ * Fixed, behind the panes, pointer-events none. Each token is its own element
+ * travelling the full height of the window, so the field is the same at any
+ * window size and never has to be measured, duplicated or wrapped. Transform
+ * and opacity only, which keeps all of it on the compositor. */
+
+.bg-code {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Layout and paint containment, deliberately not `strict`: that includes size
+     containment, which resolves the auto width and height of a fixed element
+     against an empty box and collapses the layer to nothing. */
+  contain: layout paint;
+  /* Faded out through the middle of the window, which is where the reading
+     column sits in both views, and left alone toward the edges. A glyph
+     crossing a sentence is the one thing that would make this noticeable, so
+     the mask is what keeps it a ground rather than an overlay. */
+  -webkit-mask-image: radial-gradient(105% 100% at 50% 46%, transparent 30%, #000 82%);
+  mask-image: radial-gradient(105% 100% at 50% 46%, transparent 30%, #000 82%);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+  white-space: pre;
+  user-select: none;
+}
+.drift {
+  position: absolute;
+  top: 112vh;
+  left: var(--x, 50%);
+  color: var(--drift);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: drift-rise var(--dur, 90s) linear var(--delay, 0s) infinite;
+}
+.drift.is-key { color: var(--drift-key); }
+
+@keyframes drift-rise {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  9%   { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { transform: translate3d(var(--dx, 0px), -124vh, 0); opacity: 0; }
+}
+
+/* ── reduced motion ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .ring-fill { transition: stroke-dashoffset .001ms !important; }
+  /* Ambient motion is dropped rather than shortened. Run at a thousandth of a
+     second the columns would land wherever that puts them, which is a
+     half-drawn field of glyphs across the reading column. */
+  .bg-code { display: none; }
+}

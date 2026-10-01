@@ -1,0 +1,496 @@
+{
+ "contains-duplicate": {
+  "hints": [],
+  "slug": "contains-duplicate",
+  "sourceId": 217,
+  "title": "Contains Duplicate"
+ },
+ "g-accounts-merge": {
+  "hints": [
+   "For every pair of emails in the same account, draw an edge between those emails. The problem is about enumerating the connected components of this graph."
+  ],
+  "slug": "accounts-merge",
+  "sourceId": 721,
+  "title": "Accounts Merge"
+ },
+ "g-add-binary": {
+  "hints": [],
+  "slug": "add-strings",
+  "sourceId": 415,
+  "title": "Add Binary"
+ },
+ "g-atoi": {
+  "hints": [],
+  "slug": "string-to-integer-atoi",
+  "sourceId": 8,
+  "title": "String to Integer (atoi)"
+ },
+ "g-balanced-binary-tree": {
+  "hints": [],
+  "slug": "balanced-binary-tree",
+  "sourceId": 110,
+  "title": "Balanced Binary Tree"
+ },
+ "g-basic-calculator": {
+  "hints": [],
+  "slug": "basic-calculator",
+  "sourceId": 224,
+  "title": "Basic Calculator"
+ },
+ "g-best-time-to-trade": {
+  "hints": [],
+  "slug": "best-time-to-buy-and-sell-stock",
+  "sourceId": 121,
+  "title": "Best Time to Buy and Sell Stock"
+ },
+ "g-build-tree": {
+  "hints": [],
+  "slug": "construct-binary-tree-from-preorder-and-inorder-traversal",
+  "sourceId": 105,
+  "title": "Construct Binary Tree from Preorder and Inorder Traversal"
+ },
+ "g-can-partition": {
+  "hints": [],
+  "slug": "partition-equal-subset-sum",
+  "sourceId": 416,
+  "title": "Partition Equal Subset Sum"
+ },
+ "g-climbing-stairs": {
+  "hints": [
+   "To reach nth step, what could have been your previous steps? (Think about the step sizes)"
+  ],
+  "slug": "climbing-stairs",
+  "sourceId": 70,
+  "title": "Climbing Stairs"
+ },
+ "g-coin-change": {
+  "hints": [],
+  "slug": "coin-change",
+  "sourceId": 322,
+  "title": "Coin Change"
+ },
+ "g-combination-sum": {
+  "hints": [],
+  "slug": "combination-sum",
+  "sourceId": 39,
+  "title": "Combination Sum"
+ },
+ "g-course-schedule": {
+  "hints": [
+   "This problem is equivalent to finding if a cycle exists in a directed graph. If a cycle exists, no topological ordering exists and therefore it will be impossible to take all courses.",
+   "Topological Sort via DFS - A great tutorial explaining the basic concepts of Topological Sort.",
+   "Topological sort could also be done via BFS."
+  ],
+  "slug": "course-schedule",
+  "sourceId": 207,
+  "title": "Course Schedule"
+ },
+ "g-diameter-binary-tree": {
+  "hints": [],
+  "slug": "diameter-of-binary-tree",
+  "sourceId": 543,
+  "title": "Diameter of a Binary Tree"
+ },
+ "g-evaluate-rpn": {
+  "hints": [],
+  "slug": "evaluate-reverse-polish-notation",
+  "sourceId": 150,
+  "title": "Evaluate Reverse Polish Notation"
+ },
+ "g-find-anagrams": {
+  "hints": [],
+  "slug": "find-all-anagrams-in-a-string",
+  "sourceId": 438,
+  "title": "Find All Anagrams in a String"
+ },
+ "g-first-bad-version": {
+  "hints": [],
+  "slug": "first-bad-version",
+  "sourceId": 278,
+  "title": "First Bad Version"
+ },
+ "g-flood-fill": {
+  "hints": [
+   "Write a recursive function that paints the pixel if it's the correct color, then recurses on neighboring pixels."
+  ],
+  "slug": "flood-fill",
+  "sourceId": 733,
+  "title": "Flood Fill"
+ },
+ "g-insert-interval": {
+  "hints": [
+   "Intervals Array is sorted. Can you use Binary Search to find the correct position to insert the new Interval.?",
+   "Can you try merging the overlapping intervals while inserting the new interval?",
+   "This can be done by comparing the end of the last interval with the start of the new interval and vice versa."
+  ],
+  "slug": "insert-interval",
+  "sourceId": 57,
+  "title": "Insert Interval"
+ },
+ "g-invert-binary-tree": {
+  "hints": [],
+  "slug": "invert-binary-tree",
+  "sourceId": 226,
+  "title": "Invert Binary Tree"
+ },
+ "g-k-closest-points": {
+  "hints": [],
+  "slug": "stamping-the-sequence",
+  "sourceId": 973,
+  "title": "K Closest Points to Origin"
+ },
+ "g-kth-smallest": {
+  "hints": [
+   "Try to utilize the property of a BST.",
+   "Try in-order traversal. (Credits to @chan13)",
+   "What if you could modify the BST node's structure?",
+   "The optimal runtime complexity is O(height of BST)."
+  ],
+  "slug": "kth-smallest-element-in-a-bst",
+  "sourceId": 230,
+  "title": "Kth Smallest Element in a BST"
+ },
+ "g-ladder-length": {
+  "hints": [],
+  "slug": "word-ladder",
+  "sourceId": 127,
+  "title": "Word Ladder"
+ },
+ "g-largest-rectangle": {
+  "hints": [],
+  "slug": "largest-rectangle-in-histogram",
+  "sourceId": 84,
+  "title": "Largest Rectangle in Histogram"
+ },
+ "g-lca-binary-tree": {
+  "hints": [],
+  "slug": "lowest-common-ancestor-of-a-binary-tree",
+  "sourceId": 236,
+  "title": "Lowest Common Ancestor of a Binary Tree"
+ },
+ "g-lca-bst": {
+  "hints": [],
+  "slug": "lowest-common-ancestor-of-a-binary-search-tree",
+  "sourceId": 235,
+  "title": "Lowest Common Ancestor of a BST"
+ },
+ "g-letter-combinations": {
+  "hints": [],
+  "slug": "letter-combinations-of-a-phone-number",
+  "sourceId": 17,
+  "title": "Letter Combinations of a Phone Number"
+ },
+ "g-level-order-traversal": {
+  "hints": [
+   "Use a queue to perform BFS."
+  ],
+  "slug": "binary-tree-level-order-traversal",
+  "sourceId": 102,
+  "title": "Binary Tree Level Order Traversal"
+ },
+ "g-longest-palindrome": {
+  "hints": [],
+  "slug": "longest-palindrome",
+  "sourceId": 409,
+  "title": "Longest Palindrome"
+ },
+ "g-longest-palindromic-substring": {
+  "hints": [
+   "How can we reuse a previously computed palindrome to compute a larger palindrome?",
+   "If “aba” is a palindrome, is “xabax” a palindrome? Similarly is “xabay” a palindrome?",
+   "Complexity based hint: If we use brute-force and check whether for every start and end position a substring is a palindrome we have O(n^2) start - end pairs and O(n) palindromic checks. Can we reduce the time for palindromic checks to O(1) by reusing some previous computation."
+  ],
+  "slug": "longest-palindromic-substring",
+  "sourceId": 5,
+  "title": "Longest Palindromic Substring"
+ },
+ "g-longest-unique-substring": {
+  "hints": [
+   "There are less than 100 unique characters. We can check all substrings with length at most 100 for example. This is a good enough approximation."
+  ],
+  "slug": "longest-substring-without-repeating-characters",
+  "sourceId": 3,
+  "title": "Longest Substring Without Repeating Characters"
+ },
+ "g-majority-element": {
+  "hints": [],
+  "slug": "majority-element",
+  "sourceId": 169,
+  "title": "Majority Element"
+ },
+ "g-maximum-depth-binary-tree": {
+  "hints": [],
+  "slug": "minimum-depth-of-binary-tree",
+  "sourceId": 111,
+  "title": "Maximum Depth of a Binary Tree"
+ },
+ "g-merge-intervals": {
+  "hints": [],
+  "slug": "merge-intervals",
+  "sourceId": 56,
+  "title": "Merge Intervals"
+ },
+ "g-merge-k-sorted": {
+  "hints": [],
+  "slug": "merge-k-sorted-lists",
+  "sourceId": 23,
+  "title": "Merge k Sorted Lists"
+ },
+ "g-merge-two-sorted-lists": {
+  "hints": [],
+  "slug": "merge-two-sorted-lists",
+  "sourceId": 21,
+  "title": "Merge Two Sorted Lists"
+ },
+ "g-middle-linked-list": {
+  "hints": [],
+  "slug": "hand-of-straights",
+  "sourceId": 876,
+  "title": "Middle of the Linked List"
+ },
+ "g-min-height-trees": {
+  "hints": [
+   "How many MHTs can a graph have at most?"
+  ],
+  "slug": "minimum-height-trees",
+  "sourceId": 310,
+  "title": "Minimum Height Trees"
+ },
+ "g-min-window-substring": {
+  "hints": [
+   "Use two pointers to create a window of letters in s, which would have all the characters from t.",
+   "Expand the right pointer until all the characters of t are covered.",
+   "Once all the characters are covered, move the left pointer and ensure that all the characters are still covered to minimize the subarray size.",
+   "Continue expanding the right and left pointers until you reach the end of s."
+  ],
+  "slug": "minimum-window-substring",
+  "sourceId": 76,
+  "title": "Minimum Window Substring"
+ },
+ "g-number-of-islands": {
+  "hints": [],
+  "slug": "number-of-islands",
+  "sourceId": 200,
+  "title": "Number of Islands"
+ },
+ "g-permutations": {
+  "hints": [],
+  "slug": "permutations",
+  "sourceId": 46,
+  "title": "Permutations"
+ },
+ "g-product-except-self": {
+  "hints": [
+   "Think how you can efficiently utilize prefix and suffix products to calculate the product of all elements except self for each index. Can you pre-compute the prefix and suffix products in linear time to avoid redundant calculations?",
+   "Can you minimize additional space usage by reusing memory or modifying the input array to store intermediate results?"
+  ],
+  "slug": "product-of-array-except-self",
+  "sourceId": 238,
+  "title": "Product of Array Except Self"
+ },
+ "g-ransom-note": {
+  "hints": [],
+  "slug": "ransom-note",
+  "sourceId": 383,
+  "title": "Ransom Note"
+ },
+ "g-reverse-linked-list": {
+  "hints": [],
+  "slug": "reverse-linked-list",
+  "sourceId": 206,
+  "title": "Reverse Linked List"
+ },
+ "g-right-side-view": {
+  "hints": [],
+  "slug": "binary-tree-right-side-view",
+  "sourceId": 199,
+  "title": "Binary Tree Right Side View"
+ },
+ "g-rotting-oranges": {
+  "hints": [],
+  "slug": "prison-cells-after-n-days",
+  "sourceId": 994,
+  "title": "Rotting Oranges"
+ },
+ "g-search-rotated": {
+  "hints": [],
+  "slug": "search-in-rotated-sorted-array",
+  "sourceId": 33,
+  "title": "Search in Rotated Sorted Array"
+ },
+ "g-sort-colors": {
+  "hints": [
+   "A rather straight forward solution is a two-pass algorithm using counting sort.",
+   "Iterate the array counting number of 0's, 1's, and 2's.",
+   "Overwrite array with the total number of 0's, then 1's and followed by 2's."
+  ],
+  "slug": "sort-colors",
+  "sourceId": 75,
+  "title": "Sort Colors"
+ },
+ "g-spiral-matrix": {
+  "hints": [
+   "Well for some problems, the best way really is to come up with some algorithms for simulation. Basically, you need to simulate what the problem asks us to do.",
+   "We go boundary by boundary and move inwards. That is the essential operation. First row, last column, last row, first column, and then we move inwards by 1 and repeat. That's all. That is all the simulation that we need.",
+   "Think about when you want to switch the progress on one of the indexes. If you progress on i out of [i, j], you'll shift in the same column. Similarly, by changing values for j, you'd be shifting in the same row. Also, keep track of the end of a boundary so that you can move inwards and then keep repeating. It's always best to simulate edge cases like a single column or a single row to see if anything breaks or not."
+  ],
+  "slug": "spiral-matrix",
+  "sourceId": 54,
+  "title": "Spiral Matrix"
+ },
+ "g-subsets": {
+  "hints": [],
+  "slug": "subsets",
+  "sourceId": 78,
+  "title": "Subsets"
+ },
+ "g-task-scheduler": {
+  "hints": [
+   "There are many different solutions for this problem, including a greedy algorithm.",
+   "For every cycle, find the most frequent letter that can be placed in this cycle. After placing, decrease the frequency of that letter by one.",
+   "Use Priority Queue."
+  ],
+  "slug": "task-scheduler",
+  "sourceId": 621,
+  "title": "Task Scheduler"
+ },
+ "g-three-sum": {
+  "hints": [
+   "So, we essentially need to find three numbers x, y, and z such that they add up to the given value. If we fix one of the numbers say x, we are left with the two-sum problem at hand!",
+   "For the two-sum problem, if we fix one of the numbers, say x, we have to scan the entire array to find the next number y, which is value - x where value is the input parameter. Can we change our array somehow so that this search becomes faster?",
+   "The second train of thought for two-sum is, without changing the array, can we use additional space somehow? Like maybe a hash map to speed up the search?"
+  ],
+  "slug": "3sum",
+  "sourceId": 15,
+  "title": "3Sum"
+ },
+ "g-unique-paths": {
+  "hints": [],
+  "slug": "unique-paths",
+  "sourceId": 62,
+  "title": "Unique Paths"
+ },
+ "g-valid-palindrome": {
+  "hints": [],
+  "slug": "valid-palindrome",
+  "sourceId": 125,
+  "title": "Valid Palindrome"
+ },
+ "g-valid-parentheses": {
+  "hints": [
+   "Use a stack of characters.",
+   "When you encounter an opening bracket, push it to the top of the stack.",
+   "When you encounter a closing bracket, check if the top of the stack was the opening for it. If yes, pop it from the stack. Otherwise, return false."
+  ],
+  "slug": "valid-parentheses",
+  "sourceId": 20,
+  "title": "Valid Parentheses"
+ },
+ "g-validate-bst": {
+  "hints": [],
+  "slug": "validate-binary-search-tree",
+  "sourceId": 98,
+  "title": "Validate Binary Search Tree"
+ },
+ "g-word-break": {
+  "hints": [],
+  "slug": "word-break",
+  "sourceId": 139,
+  "title": "Word Break"
+ },
+ "g-word-search": {
+  "hints": [],
+  "slug": "word-search",
+  "sourceId": 79,
+  "title": "Word Search"
+ },
+ "g-zero-one-matrix": {
+  "hints": [],
+  "slug": "01-matrix",
+  "sourceId": 542,
+  "title": "01 Matrix"
+ },
+ "lc-candy": {
+  "hints": [],
+  "slug": "candy",
+  "sourceId": 135,
+  "title": "Candy"
+ },
+ "lc-container-water": {
+  "hints": [
+   "If you simulate the problem, it will be O(n^2) which is not efficient.",
+   "Try to use two-pointers. Set one pointer to the left and one to the right of the array. Always move the pointer that points to the lower line.",
+   "How can you calculate the amount of water at each step?"
+  ],
+  "slug": "container-with-most-water",
+  "sourceId": 11,
+  "title": "Container With Most Water"
+ },
+ "lc-decode-ways": {
+  "hints": [],
+  "slug": "decode-ways",
+  "sourceId": 91,
+  "title": "Decode Ways"
+ },
+ "lc-first-missing-positive": {
+  "hints": [
+   "Think about how you would solve the problem in non-constant space. Can you apply that logic to the existing space?",
+   "We don't care about duplicates or non-positive integers",
+   "Remember that O(2n) = O(n)"
+  ],
+  "slug": "first-missing-positive",
+  "sourceId": 41,
+  "title": "First Missing Positive"
+ },
+ "lc-median-two-sorted": {
+  "hints": [],
+  "slug": "median-of-two-sorted-arrays",
+  "sourceId": 4,
+  "title": "Median of Two Sorted Arrays"
+ },
+ "lc-search-rotated": {
+  "hints": [],
+  "slug": "search-in-rotated-sorted-array",
+  "sourceId": 33,
+  "title": "Search Rotated Array"
+ },
+ "lc-subarray-sum-k": {
+  "hints": [
+   "Will Brute force work here? Try to optimize it.",
+   "Can we optimize it by using some extra space?",
+   "What about storing sum frequencies in a hash table? Will it be useful?",
+   "sum(i,j)=sum(0,j)-sum(0,i), where sum(i,j) represents the sum of all the elements from index i to j-1. Can we use this property to optimize it."
+  ],
+  "slug": "subarray-sum-equals-k",
+  "sourceId": 560,
+  "title": "Subarray Sum Equals K"
+ },
+ "lc-trapping-rain-water": {
+  "hints": [],
+  "slug": "trapping-rain-water",
+  "sourceId": 42,
+  "title": "Trapping Rain Water"
+ },
+ "maximum-subarray": {
+  "hints": [],
+  "slug": "maximum-subarray",
+  "sourceId": 53,
+  "title": "Maximum Subarray"
+ },
+ "two-sum": {
+  "hints": [
+   "A really brute force way would be to search for all possible pairs of numbers but that would be too slow. Again, it's best to try out brute force solutions just for completeness. It is from these brute force solutions that you can come up with optimizations.",
+   "So, if we fix one of the numbers, say `x`, we have to scan the entire array to find the next number `y` which is `value - x` where value is the input parameter. Can we change our array somehow so that this search becomes faster?",
+   "The second train of thought is, without changing the array, can we use additional space somehow? Like maybe a hash map to speed up the search?"
+  ],
+  "slug": "two-sum",
+  "sourceId": 1,
+  "title": "Two Sum"
+ },
+ "valid-anagram": {
+  "hints": [],
+  "slug": "valid-anagram",
+  "sourceId": 242,
+  "title": "Valid Anagram"
+ }
+}

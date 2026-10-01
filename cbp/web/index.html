@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<!-- One window colour, written by the script below rather than by a media
+     query: the appearance is chosen in the app, so the system setting is not
+     always the one in force. -->
+<meta name="theme-color" id="theme-color" content="#0e1618">
+<title>Praccy</title>
+<script>
+  /* The appearance has to be on <html> before the first paint, or the app
+     opens in one theme and repaints in the other a frame later. The stylesheet
+     holds one block of tokens per appearance and switches between them on this
+     attribute, so the whole theme is decided here.
+   *
+   * The preference lives in the server's settings file, which cannot be read
+   * synchronously. It does have a localStorage mirror from the last launch,
+   * written by store.js, and that is good enough to open on the right theme.
+   * app.js re-applies it once the server has answered, which is a no-op unless
+   * the two copies ever disagree. */
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem("cbp.theme"); } catch (e) { /* private mode */ }
+    var light = window.matchMedia("(prefers-color-scheme: light)").matches;
+    var theme = (stored === "light" || stored === "dark") ? stored : (light ? "light" : "dark");
+    document.documentElement.dataset.theme = theme;
+    var meta = document.getElementById("theme-color");
+    if (meta) meta.content = theme === "light" ? "#edf0ec" : "#0e1618";
+  })();
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#pane">Skip to question</a>
+
+<!-- Icon set. Every glyph is decorative and sits next to a text label. -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-check" viewBox="0 0 16 16">
+    <path d="M3.2 8.4l3.2 3.2 6.4-7.2" fill="none" stroke="currentColor" stroke-width="1.9"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 16 16">
+    <path d="M4.2 4.2l7.6 7.6M11.8 4.2l-7.6 7.6" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-chevron" viewBox="0 0 16 16">
+    <path d="M6.2 3.4L10.8 8l-4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M8 4.7V8l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.4"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-flame" viewBox="0 0 16 16">
+    <path d="M8.6 1.2c.3 2.1-1 2.9-2.1 3.9C5 6.5 3.9 7.7 3.9 9.4a4.1 4.1 0 0 0 8.2 0c0-2.4-1.7-3.6-2.6-5.2-.3 1-1 1.6-1.7 1.9.5-2 .4-3.2.8-4.9z"
+          fill="currentColor"/>
+  </symbol>
+  <symbol id="i-trophy" viewBox="0 0 16 16">
+    <path d="M4.8 2.4h6.4v3.2a3.2 3.2 0 0 1-6.4 0z" fill="none" stroke="currentColor"
+          stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M4.8 3.6H3.2a1.6 1.6 0 0 0 1.6 2.8M11.2 3.6h1.6a1.6 1.6 0 0 1-1.6 2.8"
+          fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M8 8.8v1.7M6.5 10.5h3v2.4M5.4 13.2h5.2" fill="none" stroke="currentColor"
+          stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-speaker" viewBox="0 0 16 16">
+    <path d="M3 6.2h2l3-2.6v8.8l-3-2.6H3z" fill="none" stroke="currentColor"
+          stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M10.4 6.3a2.4 2.4 0 0 1 0 3.4M12 4.5a4.6 4.6 0 0 1 0 7" fill="none"
+          stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-bulb" viewBox="0 0 16 16">
+    <path d="M8 1.9a4.1 4.1 0 0 0-2.5 7.3c.5.4.8 1 .8 1.6h3.4c0-.6.3-1.2.8-1.6A4.1 4.1 0 0 0 8 1.9z"
+          fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M6.4 12.7h3.2M6.9 14.2h2.2" fill="none" stroke="currentColor" stroke-width="1.4"
+          stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-code" viewBox="0 0 16 16">
+    <path d="M5.7 4.3L2.1 8l3.6 3.7M10.3 4.3L13.9 8l-3.6 3.7" fill="none" stroke="currentColor"
+          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-reset" viewBox="0 0 16 16">
+    <path d="M12.9 8a4.9 4.9 0 1 1-1.6-3.7" fill="none" stroke="currentColor"
+          stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M13.1 2.1v3.2H9.9" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <!-- Two appearances, one control. Which glyph is showing is decided by the
+       data-theme attribute in CSS, so the button needs no scripting to draw
+       itself correctly. -->
+  <symbol id="i-sun" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <path d="M8 1.2v1.7M8 13.1v1.7M14.8 8h-1.7M2.9 8H1.2M12.8 3.2l-1.2 1.2M4.4 11.6l-1.2 1.2M12.8 12.8l-1.2-1.2M4.4 4.4L3.2 3.2"
+          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 16 16">
+    <path d="M13.4 9.9A5.9 5.9 0 0 1 6.1 2.6a5.9 5.9 0 1 0 7.3 7.3z" fill="none"
+          stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 16 16">
+    <circle cx="7.1" cy="7.1" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <path d="M10.2 10.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <!-- The mark is the progress ring, at rest: the app's icon and its status
+         are deliberately the same object. -->
+    <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+      <rect x=".5" y=".5" width="35" height="35" rx="10.5" class="brand-plate"/>
+      <circle cx="18" cy="18" r="10" fill="none" stroke="currentColor" stroke-width="2.6"
+              stroke-linecap="round" class="brand-ring"/>
+    </svg>
+    <span class="brand-name">Praccy</span>
+  </div>
+
+  <div class="topbar-controls">
+    <div class="segmented" id="segmented">
+      <span class="segmented-thumb" id="segmented-thumb" aria-hidden="true"></span>
+      <button class="segmented-btn" id="view-practice" type="button" data-sound="toggle"
+              aria-pressed="false">Practice</button>
+      <button class="segmented-btn is-active" id="view-track" type="button" data-sound="toggle"
+              aria-pressed="true">Course</button>
+    </div>
+
+    <label class="menu">
+      <span class="menu-label">Language</span>
+      <select id="language-select"></select>
+    </label>
+
+    <div class="streak" id="streak" hidden>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-flame"/></svg>
+      <span class="streak-count" id="streak-count">0</span>
+      <span class="visually-hidden" id="streak-label">day streak</span>
+    </div>
+
+    <!-- Two readings with one number each. The badge is what XP produces and
+         the bar is how far the next level is; the trophy count is what those
+         levels and the rest of the list have earned so far. The raw XP total
+         lives in the trophy panel now, on a labelled bar that says what the
+         next level costs -- sitting bare in the header is what made it look
+         like it did nothing. -->
+    <button class="level" id="level-chip" type="button"
+            aria-label="Level and progress">
+      <span class="level-badge" id="level-badge">1</span>
+      <span class="level-bar" aria-hidden="true"><span class="level-fill" id="level-fill"></span></span>
+    </button>
+
+    <button class="trophy-chip" id="trophy-chip" type="button"
+            aria-label="Trophies">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-trophy"/></svg>
+      <span class="trophy-count" id="trophy-count">0/0</span>
+    </button>
+
+    <!-- Sits beside the sound control because it is the same kind of thing: a
+         global preference, one press, no mode to think about. The label says
+         which way the press goes rather than which way the app currently is,
+         so the button reads as a switch and not as a readout. -->
+    <button class="icon-button" id="theme-btn" type="button" data-sound="toggle"
+            aria-label="Switch to light appearance">
+      <svg class="icon icon-sun" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>
+      <svg class="icon icon-moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+    </button>
+
+    <button class="icon-button" id="sound-btn" type="button" title="Sound"
+            aria-label="Sound settings">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-speaker"/></svg>
+    </button>
+
+    <div class="progress" id="progress">
+      <svg class="ring" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+        <circle class="ring-track" cx="18" cy="18" r="15"/>
+        <circle class="ring-fill" id="ring-fill" cx="18" cy="18" r="15"/>
+      </svg>
+      <span class="progress-label" id="progress-chip">0 of 0</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout" id="layout">
+
+  <aside class="sidebar" id="sidebar" aria-label="Questions">
+    <div class="sidebar-filter">
+      <div class="source-filter" role="group" aria-label="Filter by where the question comes from">
+        <button class="source-chip is-active" data-source="" data-sound="toggle" type="button" aria-pressed="true">All</button>
+        <button class="source-chip" data-source="Coderbyte" data-sound="toggle" type="button" aria-pressed="false">Coderbyte</button>
+        <button class="source-chip" data-source="LeetCode" data-sound="toggle" type="button" aria-pressed="false">LeetCode</button>
+      </div>
+      <div class="search-wrap">
+        <svg class="icon search-icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+        <input type="search" id="filter-input" placeholder="Filter questions…" autocomplete="off"
+               aria-label="Filter questions by title or topic">
+      </div>
+    </div>
+    <nav id="question-list" class="question-list"></nav>
+  </aside>
+
+  <section class="pane track-pane" id="track-pane" hidden></section>
+
+  <section class="pane" id="pane" tabindex="-1">
+
+    <!-- ── welcome ───────────────────────────────────────────────
+         The front door, and it has one thing to explain before you press
+         anything: what "graded exactly" means here. The type mismatch is not
+         an edge case, it is the mistake this whole app exists to drill, so it
+         is stated up front with both forms side by side rather than left for
+         you to discover on a question you were sure about. The four notes
+         under it are the things you cannot guess from the screen: when the
+         clock runs, that help exists, what a failure tells you, and that
+         nothing is uploaded. -->
+    <div class="welcome" id="pane-empty">
+      <p class="welcome-count" id="welcome-count"></p>
+      <h1>A timed drill, graded exactly.</h1>
+      <p class="welcome-sub">
+        All 144 questions, from Coderbyte and LeetCode. Type the function, submit, and
+        get a straight answer. The grader compares the value and its type, so
+        <code>True</code> where the example shows <code>&quot;true&quot;</code> comes back
+        wrong however sound the logic is. Being right about that under a clock is the
+        thing worth practising.
+      </p>
+      <div class="welcome-actions">
+        <button class="btn btn-primary" id="start-btn" type="button">Start with a question</button>
+        <button class="btn" id="start-track-btn" type="button">Learn the patterns first</button>
+      </div>
+      <ul class="welcome-notes">
+        <li>The clock starts on your first keystroke and stops when you submit.</li>
+        <li>Every question carries two or three hints, revealed one at a time.</li>
+        <li>A failed run shows the first case that broke, not just a score.</li>
+        <li>Everything runs on this Mac. Nothing you type leaves it.</li>
+      </ul>
+    </div>
+
+    <!-- ── question ────────────────────────────────────────────── -->
+    <article class="question" id="question" hidden>
+
+      <header class="question-head">
+        <p class="question-position" id="question-position"></p>
+        <h1 id="question-title"></h1>
+
+        <div class="question-meta">
+          <span class="meta-timer" id="question-timer">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-clock"/></svg>
+            <span id="question-timer-text">0.0s</span>
+          </span>
+          <span class="meta-sep" aria-hidden="true"></span>
+          <span class="meta-item" id="question-tier"></span>
+          <span class="source-badge" id="question-source" hidden></span>
+          <span class="meta-item meta-best" id="question-best" hidden></span>
+        </div>
+      </header>
+
+      <p class="prompt" id="question-prompt"></p>
+
+      <div class="contract">
+        <div class="contract-row">
+          <span class="contract-key">Signature</span>
+          <code id="question-signature"></code>
+        </div>
+        <div class="contract-row">
+          <span class="contract-key">Must return</span>
+          <code id="question-contract"></code>
+        </div>
+      </div>
+
+      <div class="note" id="question-note" hidden></div>
+
+      <!-- The whole header is the control. It went through two worse shapes
+           first: a Hide in the header with a separate Show button down where
+           the block had been, so the click that closed the list landed
+           somewhere other than the click that reopened it; then a small
+           Show/Hide button sitting at the end of a header that was otherwise
+           inert, which is a 54px target inside a full-width row that looks
+           like it should also work. Now the row is the button, and the label
+           and the state word are inside it. -->
+      <section class="examples" id="examples-block" aria-labelledby="examples-label">
+        <button class="examples-head" id="examples-toggle" type="button"
+                data-sound="toggle"
+                aria-expanded="true" aria-controls="examples-body"
+                aria-label="Hide the examples">
+          <span class="examples-label" id="examples-label">Examples</span>
+          <span class="examples-state" id="examples-state">Hide</span>
+          <span class="examples-chevron" aria-hidden="true">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg>
+          </span>
+        </button>
+        <ol class="example-list" id="examples-body"></ol>
+      </section>
+
+      <!-- Hints are the first thing offered, not the last. The trigger sits in
+           the editor's own row, beside Reset, and the hints it reveals appear
+           directly above the answer they are about -- because help you have to
+           scroll to find is help you do not use. The solution, which ends the
+           attempt rather than aiding it, is at the very bottom of the page. -->
+      <div class="editor-head">
+        <span class="editor-label" id="editor-label">Your code</span>
+        <div class="editor-actions">
+          <button class="hint-ask" id="hint-ask" type="button" data-sound="cue"
+                  aria-controls="hint-list" aria-expanded="false">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-bulb"/></svg>
+            <span id="hint-ask-text">Show a hint</span>
+            <span class="hint-count" id="hint-count"></span>
+          </button>
+          <button class="btn btn-ghost" id="reset-btn" type="button">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-reset"/></svg> Reset
+          </button>
+        </div>
+      </div>
+
+      <section class="hint" id="hint-block" hidden aria-label="Hints">
+        <ol class="hint-list" id="hint-list" aria-live="polite"></ol>
+      </section>
+
+      <div class="editor-shell">
+        <div class="gutter" id="gutter" aria-hidden="true"></div>
+        <label class="visually-hidden" for="editor" id="editor-label-sr">Your answer</label>
+        <textarea id="editor" class="editor" spellcheck="false"
+                  autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn btn-primary" id="submit-btn" type="button">Submit</button>
+        <span class="submit-hint">
+          <span>Tab inserts spaces</span>
+          <span><kbd>⌘</kbd><kbd>↵</kbd> submits</span>
+        </span>
+      </div>
+
+      <div class="result" id="result" hidden aria-live="polite"></div>
+
+      <div class="lesson" id="lesson" hidden></div>
+
+      <!-- The techniques the question is built from, and the part you are meant
+           to work out for yourself -- so they are blurred until asked for,
+           rather than sitting under the title where they spoiled the shape of
+           the answer before it had been read. -->
+      <section class="patterns" id="patterns-block" hidden>
+        <button class="patterns-label" id="patterns-reveal" type="button" data-sound="cue"
+                aria-controls="pattern-list" aria-expanded="false">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-bulb"/></svg>
+          <span class="patterns-word">Patterns</span>
+          <span class="patterns-hint" id="patterns-hint">Reveal</span>
+        </button>
+        <ul class="pattern-list" id="pattern-list"></ul>
+      </section>
+
+      <!-- The last thing on the page, deliberately. The solution ends the
+           attempt, so it reads as the last resort rather than as a feature of
+           the question, and the hints above the answer are the first. -->
+      <details class="solution" id="solution-block">
+        <summary><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg> Reference solution</summary>
+        <pre id="solution-code"></pre>
+      </details>
+
+      <nav class="pane-nav" aria-label="Browse questions">
+        <button class="btn btn-ghost" id="prev-btn" type="button">Previous</button>
+        <button class="btn btn-ghost" id="next-btn" type="button">Next</button>
+      </nav>
+
+    </article>
+  </section>
+</main>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden></div>
+
+<!-- Drifting code. Under the panes rather than over them, so it reads as
+     something the window is showing through to rather than as an overlay. The
+     glyphs are decorative and the whole layer is hidden from assistive
+     technology. -->
+<div class="bg-code" id="bg-code" aria-hidden="true"></div>
+
+<!-- Celebration layer. Sits above everything, pointer-events none, purely
+     decorative. The success burst is drawn here and cleans itself up. -->
+<div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Order matters: app.js reads progress.js and sound.js while it is being
+     parsed, because the settings and the points rules are part of its initial
+     state rather than something it fetches. -->
+<script src="store.js"></script>
+<script src="progress.js"></script>
+<script src="sound.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
