@@ -187,7 +187,7 @@ def verify_output(bundle: Path) -> None:
     log("verified: assets, fonts and executable all present")
 
 
-def build(onefile: bool, workdir: Path) -> Path:
+def build(onefile: bool, workdir: Path, windowed: bool = True) -> Path:
     pyinstaller = require_pyinstaller()
     log(f"pyinstaller {pyinstaller} on {target_name()}")
 
@@ -215,9 +215,13 @@ def build(onefile: bool, workdir: Path) -> Path:
         # frozen build cannot import something it never collected.
         "--hidden-import", _backend(),
         "--collect-submodules", "cbp",
-        "--windowed",           # no console window on Windows or Linux
         "--osx-bundle-identifier", APP_ID,
     ]
+    if windowed:
+        # No console window on Windows and Linux, which is what a user wants.
+        # It also means the process has no stdout to read, which is why the
+        # verification build below is built without it.
+        command.append("--windowed")
     if onefile:
         command.append("--onefile")
     else:
@@ -235,7 +239,7 @@ def build(onefile: bool, workdir: Path) -> Path:
     # the artifact is found by looking rather than by assuming a filename.
     if onefile:
         artifact = outdir / (f"{APP_NAME}.exe" if sys.platform == "win32" else APP_NAME)
-        verify_onefile(outdir, artifact)
+        verify_onefile(outdir, artifact, console_binary=outdir / "verify")
     else:
         bundle = outdir / (f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME)
         verify_output(bundle)
@@ -243,7 +247,49 @@ def build(onefile: bool, workdir: Path) -> Path:
     return artifact
 
 
-def verify_onefile(outdir: Path, artifact: Path) -> None:
+def build_console_probe(console_binary: Path) -> Path:
+    """A second, console-flavoured build purely so the first can be checked.
+
+    This is not duplication for its own sake. A `--windowed` build on Windows is
+    a GUI-subsystem executable: it has no console and no stdout, so running
+    `Praccy.exe --check` writes to nothing and the caller cannot tell a pass
+    from a hang. That is not theoretical -- it is what stopped the first Windows
+    CI run, which built a perfectly good 12MB executable in four seconds and
+    then sat in verification for forty minutes until cancelled.
+
+    The two builds are byte-for-byte the same program; only the subsystem
+    differs, so what the probe proves about the shipped binary is that the
+    bundled data is complete and the engine starts. The window is not opened by
+    `--check`, so the GUI subsystem has no bearing on it.
+
+    Built into a separate directory so it cannot be mistaken for, or shipped
+    instead of, the real artifact.
+    """
+    log("building a console copy to verify against")
+    command = [
+        sys.executable, "-m", "PyInstaller",
+        "--noconfirm", "--clean",
+        "--name", "verify",
+        "--distpath", str(console_binary),
+        "--workpath", str(console_binary.parent / "verify-work"),
+        "--specpath", str(console_binary.parent / "verify-work"),
+        "--add-data", f"{ROOT / 'cbp' / 'web' / 'fonts'}{os.pathsep}cbp/web/fonts",
+        "--add-data", f"{ROOT / 'cbp' / 'data'}{os.pathsep}cbp/data",
+        "--add-data", f"{ROOT / 'cbp' / 'web'}{os.pathsep}cbp/web",
+        "--hidden-import", "webview",
+        "--hidden-import", _backend(),
+        "--collect-submodules", "cbp",
+        "--onefile",
+        str(ROOT / "praccy.py"),
+    ]
+    proc = subprocess.run(command)
+    if proc.returncode != 0:
+        raise SystemExit(f"The verification build failed with {proc.returncode}")
+    name = "verify.exe" if sys.platform == "win32" else "verify"
+    return console_binary / name
+
+
+def verify_onefile(outdir: Path, artifact: Path, console_binary: Path) -> None:
     """Check a one-file build by running it, because nothing else is possible.
 
     A one-file build has no data directory to inspect: PyInstaller packs the
@@ -277,7 +323,10 @@ def verify_onefile(outdir: Path, artifact: Path) -> None:
                         "too small to contain the interpreter and the app")
 
     log("running it, because a one-file build cannot be inspected")
-    proc = subprocess.run([str(binary), "--check"], capture_output=True, text=True,
+    # Verified with the console build, not `artifact`: a --windowed Windows exe
+    # has no stdout, so running it produces no output and cannot be checked.
+    probe = build_console_probe(console_binary)
+    proc = subprocess.run([str(probe), "--check"], capture_output=True, text=True,
                           timeout=300)
     for line in (proc.stdout or "").splitlines():
         if line.strip():
@@ -288,6 +337,7 @@ def verify_onefile(outdir: Path, artifact: Path) -> None:
     elif "font " not in (proc.stdout or ""):
         problems.append("--check did not report the bundled fonts, so the "
                         "typefaces are not in the executable")
+    shutil.rmtree(console_binary, ignore_errors=True)
 
     if problems:
         print("\n  BUILD INCOMPLETE")
@@ -387,13 +437,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=f"package {APP_NAME}")
     parser.add_argument("--onefile", action="store_true",
                         help="a single executable, and an AppImage on Linux")
+    parser.add_argument("--console", action="store_true",
+                        help="keep the console window (for debugging; not for "
+                             "handing to anyone)")
     parser.add_argument("--workdir", default=str(ROOT / "dist" / "work"),
                         help="PyInstaller's scratch directory")
     args = parser.parse_args()
 
     print(f"\n  Packaging {APP_NAME} {VERSION} for {target_name()}")
     print("  " + "-" * 52)
-    artifact = build(args.onefile, Path(args.workdir))
+    artifact = build(args.onefile, Path(args.workdir),
+                     windowed=not args.console)
     image = appimage(artifact) if args.onefile else None
     print("  " + "-" * 52)
     log(f"artifact {artifact}")

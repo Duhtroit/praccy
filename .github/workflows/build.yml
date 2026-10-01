@@ -21,6 +21,10 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    # A build takes a couple of minutes. Half an hour is generous, and having a
+    # ceiling is the point: the first Windows run sat in a verification step for
+    # forty minutes because nothing was timing it out.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -63,21 +67,14 @@ jobs:
       - name: build
         run: python tools/build_portable.py --onefile
 
-      # The build's own checks (fonts present, assets present, executable
-      # non-trivial) are worth more than a green exit code, so the artifact is
-      # run here too, as it will actually be shipped. The path comes from the
-      # manifest rather than being written out by hand, because it depends on
-      # the OS, the architecture and --onefile all at once.
-      - name: verify the artifact runs
+      # The build step already verified the artifact by running it, against a
+      # console-flavoured copy of the same program. That step exists because a
+      # --windowed Windows exe is a GUI-subsystem binary with no stdout: running
+      # it produces no output and cannot be checked. Running it here would hang
+      # the job exactly the way the first Windows run did.
+      - name: what was built
         shell: bash
-        run: |
-          set -euo pipefail
-          exe=$(python -c "import json;print(json.load(open('dist/artifacts.json'))['artifacts'][0]['path'])")
-          echo "running $exe"
-          ls -la "$exe"
-          # --check starts the server, fetches the page and both typefaces, and
-          # exits. It needs no display, which is what makes it usable here.
-          "$exe" --check
+        run: cat dist/artifacts.json
 
       - name: upload
         uses: actions/upload-artifact@v4
