@@ -1,14 +1,12 @@
-# Build distributable binaries for Windows and Linux.
+# Build the distributables for every platform, then publish a release.
 #
 # PyInstaller is not a cross-compiler: it links against the extension modules of
-# the interpreter it is installed into, so a Windows executable has to be built
-# by Windows and a Linux one by Linux. This workflow is the reason
-# tools/build_portable.py can be a single script: it is run once per platform,
-# on that platform's own runner, and the artifacts come back as files to hand
-# over.
+# the interpreter it is installed into, so a Windows binary has to be built by
+# Windows and a Linux one by Linux. That is why this is a matrix rather than one
+# job with three outputs.
 #
-# Push a tag, or run it by hand from the Actions tab, and the two binaries
-# appear under the run's summary as artifacts.
+# Push a tag, or run it by hand from the Actions tab. Either way the release
+# ends up on the repository's Releases page with a binary per platform.
 
 name: build
 
@@ -16,6 +14,12 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+
+permissions:
+  contents: write  # to create the release
+
+env:
+  APPIMAGE_EXTRACT_AND_RUN: 1
 
 jobs:
   build:
@@ -29,17 +33,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            name: Windows
+          # One file per platform, because one file is what you send to someone.
           - os: ubuntu-latest
             name: Linux
+            args: --onefile
+          - os: windows-latest
+            name: Windows
+            args: --onefile
+          # macOS gets the .app bundle rather than a bare executable, because
+          # that is what a Mac user expects to double-click and what Finder will
+          # give an icon and a Dock tile for.
+          - os: macos-latest
+            name: macOS
+            args: --onedir
 
     steps:
       - uses: actions/checkout@v4
 
-      # 3.12 rather than "latest", because the app is pinned to a version on
-      # macOS and a build that silently moves to 3.13 is a build that might not
-      # reproduce. PyInstaller 6.22 and pywebview 6.x are the tested pair.
+      # 3.12 rather than "latest": the app is pinned to a version on macOS and a
+      # build that silently moves to 3.13 is a build that might not reproduce.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -49,11 +61,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install "pyinstaller>=6.6" "pywebview>=5"
 
-      # Linux needs the webview GTK libraries at build time, or PyInstaller
-      # cannot find the modules pywebview imports and the frozen app dies at
-      # startup with a bare ImportError. These are the same libraries the app
-      # needs at run time, which is why they are installed rather than merely
-      # noted.
+      # The webview the app renders in. Without them PyInstaller cannot
+      # collect the backend and the frozen binary dies at startup -- and they
+      # are also what the app needs at run time, so they are installed rather
+      # than merely noted.
       - name: linux webview dependencies
         if: runner.os == 'Linux'
         run: |
@@ -62,27 +73,92 @@ jobs:
             libwebkit2gtk-4.1-0 libgtk-3-0 libgirepository1.0-dev \
             libcairo2 libpango-1.0-0 libxkbcommon0
 
-      # A single file, because a single file is what you send to someone. The
-      # AppImage on Linux is produced by this same step.
-      - name: build
-        run: python tools/build_portable.py --onefile
+      # This step also verifies the build: tools/build_portable.py starts the
+      # artifact and checks that it serves the page and both bundled typefaces,
+      # which is the only check that catches a font left out of the bundle --
+      # an app that starts, renders, and quietly falls back to a system face.
+      - name: build and verify
+        run: python tools/build_portable.py ${{ matrix.args }}
 
-      # The build step already verified the artifact by running it, against a
-      # console-flavoured copy of the same program. That step exists because a
-      # --windowed Windows exe is a GUI-subsystem binary with no stdout: running
-      # it produces no output and cannot be checked. Running it here would hang
-      # the job exactly the way the first Windows run did.
-      - name: what was built
+      # Zipped here rather than in the release job, so the artifact that is
+      # uploaded is the thing that gets published.
+      - name: package
         shell: bash
-        run: cat dist/artifacts.json
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY' > /tmp/paths.txt
+          import json
+          for a in json.load(open("dist/artifacts.json"))["artifacts"]:
+              print(a["kind"], a["path"])
+          PY
+          while read -r kind path; do
+            case "$kind" in
+              appimage) cp "$path" "out/Praccy.AppImage"; chmod +x "out/Praccy.AppImage" ;;
+              onefile)
+                if [ "$RUNNER_OS" = "Windows" ]; then cp "$path" out/Praccy.exe
+                else cp "$path" "out/Praccy-$RUNNER_OS"; fi ;;
+              onedir)
+                # Zip from inside the bundle's own directory, so the archive
+                # contains Praccy.app and not dist/<target>/Praccy.app. Finder
+                # unpacks the first and leaves the second in a folder.
+                (cd "$(dirname "$path")" && zip -qry "$GITHUB_WORKSPACE/out/Praccy-$RUNNER_OS.zip" "$(basename "$path")") ;;
+            esac
+          done < /tmp/paths.txt
+          ls -la out
 
-      - name: upload
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: Praccy-${{ matrix.name }}
-          path: |
-            dist/*/Praccy.exe
-            dist/*/Praccy
-            dist/*.AppImage
-            dist/artifacts.json
+          path: out/
           if-no-files-found: error
+
+  release:
+    name: release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on a tag, so a manual run of the build does not overwrite a release
+    # that has been out for a while.
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+
+      - name: assemble
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          # A macOS .zip is unpacked by Finder into the .app, so it needs the
+          # directory preserved; the raw artifact already has it.
+          cp -R downloads/Praccy-macOS/. release/
+          cp downloads/Praccy-Windows/Praccy.exe release/ 2>/dev/null || true
+          cp downloads/Praccy-Linux/Praccy.AppImage release/ 2>/dev/null || true
+          ls -la release
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/}"
+          notes=$(mktemp)
+          cat > "$notes" <<'NOTES'
+          ## Praccy
+
+          A question, a stopwatch, and a grader that tells you which test case
+          caught you.
+
+          | Platform | File | Notes |
+          |---|---|---|
+          | macOS | `Praccy-macOS.zip` | Unpacks to `Praccy.app`. Not notarised, so first launch needs right-click then Open. |
+          | Windows | `Praccy.exe` | Windows 10 and 11 already have the WebView2 runtime it needs. |
+          | Linux | `Praccy.AppImage` | Needs a recent `webkit2gtk`. `chmod +x` before running. |
+
+          Python is bundled and is the only language guaranteed to work on a
+          fresh machine. The others need a compiler; the app checks on first run
+          and tells you what to install.
+
+          Nothing is uploaded anywhere and it works with the network off.
+          NOTES
+          gh release create "$tag" release/* --title "Praccy $tag" --notes-file "$notes"

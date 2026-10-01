@@ -437,12 +437,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=f"package {APP_NAME}")
     parser.add_argument("--onefile", action="store_true",
                         help="a single executable, and an AppImage on Linux")
+    parser.add_argument("--onedir", action="store_true",
+                        help="a directory (the default; accepted so a build "
+                             "matrix can pass the same flag on every platform)")
     parser.add_argument("--console", action="store_true",
                         help="keep the console window (for debugging; not for "
                              "handing to anyone)")
     parser.add_argument("--workdir", default=str(ROOT / "dist" / "work"),
                         help="PyInstaller's scratch directory")
     args = parser.parse_args()
+    if args.onedir and args.onefile:
+        raise SystemExit("--onedir and --onefile are opposites; pick one.")
 
     print(f"\n  Packaging {APP_NAME} {VERSION} for {target_name()}")
     print("  " + "-" * 52)

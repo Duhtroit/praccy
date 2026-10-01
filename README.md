@@ -79,13 +79,15 @@ filled in by how many of those you have actually solved.
 Praccy is a local app. Nothing is uploaded, nothing is phoned home, and it works
 with the network switched off.
 
-- **macOS** — download `Praccy.app` from the [releases](../../releases) page,
-  drag it to Applications, and open it. It bundles its own Python, so there is
-  nothing to install.
+- **macOS** — download `Praccy-macOS.zip` from the Releases page, unpack it,
+  and open `Praccy.app`. It bundles its own Python, so there is nothing to
+  install. It is not notarised, so the first launch needs right-click then Open.
 - **Windows** — download `Praccy.exe` and run it. Windows 10 and 11 already
   contain the WebView2 runtime it needs.
-- **Linux** — download the `.AppImage` and run it. It needs a recent
-  `webkit2gtk`; that is what the app renders in.
+- **Linux** — download `Praccy.AppImage`, `chmod +x` it, and run it. It needs a
+  recent `webkit2gtk`; that is what the app renders in.
+
+Or build any of them yourself with `python3 tools/build_portable.py --onefile`.
 
 Python ships with the app and is the only language guaranteed to work on a fresh
 machine. The other four need a compiler you may or may not have; the app checks
